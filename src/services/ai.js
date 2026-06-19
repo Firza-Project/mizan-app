@@ -111,7 +111,6 @@ export const calculateHealthScore = (userId) => {
 
   const {
     incomeReference,
-    totalExpense,
     dharuriyatSpend,
     tahsiniyatSpend,
     hajiyatSpend,
@@ -397,7 +396,6 @@ export const generateRecommendations = (userId) => {
   // Savings advice
   const { savingsPercent } = calculateFinancials(userId, transactions, budgetPlan);
   if (savingsPercent < 20) {
-    const gap = Math.round(20 - savingsPercent);
     recommendations.push({
       type: 'SAVINGS_LOW',
       title: '🌱 Rekomendasi Keberkahan Finansial',
@@ -444,10 +442,6 @@ export const generateWeeklyReflection = (userId) => {
   const topCategoryLabel = topCategory ? (CATEGORY_TO_SYARIAH_MAP[topCategory]?.label || topCategory) : 'Tidak ada pengeluaran';
 
   // 50/30/20 Compliance
-  const dharuriyat = thisWeekTxs.filter(t => t.priority_tag === 'Dharuriyat').reduce((sum, t) => sum + t.amount, 0);
-  const flex = thisWeekTxs.filter(t => t.priority_tag === 'Hajiyat' || t.priority_tag === 'Tahsiniyat').reduce((sum, t) => sum + t.amount, 0);
-  const saving = Math.max(0, income - expense);
-
   const compliance = calculateHealthScore(userId).breakdown.compliance || 100;
   const israfScore = calculateHealthScore(userId).breakdown.israf || 100;
 

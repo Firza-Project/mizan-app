@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { db, getRawStorageData } from '../services/db';
 
 export default function AdminPanel({ refreshTrigger }) {
@@ -18,53 +18,53 @@ export default function AdminPanel({ refreshTrigger }) {
   const [inspectingKey, setInspectingKey] = useState('mizan_transactions');
 
   useEffect(() => {
+    const loadAdminData = () => {
+      const list = db.logs.list();
+      setLogs(list);
+
+      // Load transactions for the main simulated user
+      const txList = db.transactions.list('user-mizan-12345');
+      setTransactions(txList);
+
+      // Calculate dynamic DAU/WAU based on logs
+      const today = new Date().toISOString().split('T')[0];
+      const uniqueTodayUsers = new Set(
+        list.filter(log => log.timestamp.split('T')[0] === today).map(log => log.user_id)
+      );
+      setDauCount(Math.max(1, uniqueTodayUsers.size + 4)); // +4 mock values for realism
+      setWauCount(Math.max(2, new Set(list.map(log => log.user_id)).size + 11));
+
+      // Calculate feature popularity
+      const featureCounts = {
+        Pencatatan_Kas: 0,
+        AI_Forecasting: 0,
+        Weekly_Reflection: 0,
+        Set_Budget: 0
+      };
+      list.forEach(log => {
+        if (log.action_type === 'Transaction_Added') featureCounts.Pencatatan_Kas += 1;
+        else if (log.action_type === 'Weekly_Reflection_Viewed') featureCounts.Weekly_Reflection += 1;
+        else if (log.action_type === 'Budget_Created') featureCounts.Set_Budget += 1;
+        else if (log.action_type === 'Israf_Warning') featureCounts.AI_Forecasting += 1;
+      });
+
+      // Add baseline mock data
+      featureCounts.Pencatatan_Kas += 42;
+      featureCounts.AI_Forecasting += 28;
+      featureCounts.Weekly_Reflection += 35;
+      featureCounts.Set_Budget += 15;
+
+      setPopularFeatures(featureCounts);
+
+      // Load raw localStorage for encryption inspector
+      const rawData = getRawStorageData(inspectingKey);
+      setRawLocalStorage(rawData);
+    };
+
     if (isLoggedIn) {
       loadAdminData();
     }
   }, [isLoggedIn, refreshTrigger, inspectingKey]);
-
-  const loadAdminData = () => {
-    const list = db.logs.list();
-    setLogs(list);
-
-    // Load transactions for the main simulated user
-    const txList = db.transactions.list('user-mizan-12345');
-    setTransactions(txList);
-
-    // Calculate dynamic DAU/WAU based on logs
-    const today = new Date().toISOString().split('T')[0];
-    const uniqueTodayUsers = new Set(
-      list.filter(log => log.timestamp.split('T')[0] === today).map(log => log.user_id)
-    );
-    setDauCount(Math.max(1, uniqueTodayUsers.size + 4)); // +4 mock values for realism
-    setWauCount(Math.max(2, new Set(list.map(log => log.user_id)).size + 11));
-
-    // Calculate feature popularity
-    const featureCounts = {
-      Pencatatan_Kas: 0,
-      AI_Forecasting: 0,
-      Weekly_Reflection: 0,
-      Set_Budget: 0
-    };
-    list.forEach(log => {
-      if (log.action_type === 'Transaction_Added') featureCounts.Pencatatan_Kas += 1;
-      else if (log.action_type === 'Weekly_Reflection_Viewed') featureCounts.Weekly_Reflection += 1;
-      else if (log.action_type === 'Budget_Created') featureCounts.Set_Budget += 1;
-      else if (log.action_type === 'Israf_Warning') featureCounts.AI_Forecasting += 1;
-    });
-
-    // Add baseline mock data
-    featureCounts.Pencatatan_Kas += 42;
-    featureCounts.AI_Forecasting += 28;
-    featureCounts.Weekly_Reflection += 35;
-    featureCounts.Set_Budget += 15;
-
-    setPopularFeatures(featureCounts);
-
-    // Load raw localStorage for encryption inspector
-    const rawData = getRawStorageData(inspectingKey);
-    setRawLocalStorage(rawData);
-  };
 
   const formatRupiah = (num) => {
     return new Intl.NumberFormat('id-ID', {

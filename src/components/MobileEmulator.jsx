@@ -1,12 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { db } from '../services/db';
 import {
   classifyTransaction,
   calculateFinancials,
-  calculateHealthScore,
   detectIsraf,
   predictBalanceDepletion,
-  generateRecommendations,
   calculateMizanScore,
   CATEGORY_TO_SYARIAH_MAP
 } from '../services/ai';
@@ -91,10 +89,7 @@ export default function MobileEmulator({ onActionLogged }) {
     date: new Date().toISOString().split('T')[0]
   });
 
-  const [budgetForm, setBudgetForm] = useState({
-    monthly_budget: '',
-    limit_alert: ''
-  });
+
 
   const [newTargetForm, setNewTargetForm] = useState({ title: '', target_amount: '', deadline: '' });
   const [targetAddAmounts, setTargetAddAmounts] = useState({});
@@ -104,49 +99,58 @@ export default function MobileEmulator({ onActionLogged }) {
 
   // Feedback toast
   const [toast, setToast] = useState(null);
-  const [notchAlert, setNotchAlert] = useState(null);
+  // Helper calculation for next prayer
+  const getNextPrayerInfo = () => {
+    const schedule = PRAYER_SCHEDULES[city] || PRAYER_SCHEDULES.Jakarta;
+    const nowHours = time.getHours();
+    const nowMinutes = time.getMinutes();
+    const nowSeconds = time.getSeconds();
+    const nowTotalSec = nowHours * 3600 + nowMinutes * 60 + nowSeconds;
 
-  // Screen resize handler for mobile detection
-  useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth <= 768);
+    const parseSec = (timeStr) => {
+      const [h, m] = timeStr.split(':').map(Number);
+      return h * 3600 + m * 60;
     };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
 
-  // Initialize data on user changes
-  useEffect(() => {
-    if (currentUser) {
-      loadData();
+    const prayers = [
+      { name: 'Subuh', time: schedule.subuh, seconds: parseSec(schedule.subuh) },
+      { name: 'Dzuhur', time: schedule.dzuhur, seconds: parseSec(schedule.dzuhur) },
+      { name: 'Ashar', time: schedule.ashar, seconds: parseSec(schedule.ashar) },
+      { name: 'Maghrib', time: schedule.maghrib, seconds: parseSec(schedule.maghrib) },
+      { name: 'Isya', time: schedule.isya, seconds: parseSec(schedule.isya) }
+    ];
+
+    let next = null;
+    for (let p of prayers) {
+      if (p.seconds > nowTotalSec) {
+        next = p;
+        break;
+      }
     }
-  }, [currentUser]);
 
-  // Real-time clock and countdown reminder ticker
-  useEffect(() => {
-    const clock = setInterval(() => {
-      setTime(new Date());
-    }, 1000);
-    return () => clearInterval(clock);
-  }, []);
+    if (!next) {
+      next = { ...prayers[0], isTomorrow: true };
+    }
 
-  // Scroll to bottom of chat
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [chatMessages, isTyping]);
+    const diffSec = next.isTomorrow
+      ? (24 * 3600 - nowTotalSec) + next.seconds
+      : next.seconds - nowTotalSec;
 
-  // Monitor prayer countdown for warning alert
-  useEffect(() => {
+    const h = Math.floor(diffSec / 3600);
+    const m = Math.floor((diffSec % 3600) / 60);
+    const s = diffSec % 60;
+    const countdown = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+
+    return {
+      nextPrayerName: next.name,
+      nextPrayerTime: next.time,
+      countdown,
+      diffMinutes: Math.floor(diffSec / 60)
+    };
+  };
+
+  const loadData = useCallback(() => {
     if (!currentUser) return;
-    const info = getNextPrayerInfo();
-    if (info.diffMinutes === prayerReminderMin) {
-      setNotchAlert(`🕌 Bersiap! Waktu ${info.nextPrayerName} akan tiba dalam ${prayerReminderMin} menit (${info.nextPrayerTime}).`);
-    } else if (info.diffMinutes < 0 || info.diffMinutes > prayerReminderMin) {
-      setNotchAlert(null);
-    }
-  }, [time, prayerReminderMin, city, currentUser]);
-
-  const loadData = () => {
     const userId = currentUser.user_id;
     const txList = db.transactions.list(userId);
     const budget = db.budgets.get(userId);
@@ -157,20 +161,6 @@ export default function MobileEmulator({ onActionLogged }) {
     const todayStr = new Date().toISOString().split('T')[0];
     const wLog = db.worship.get(userId, todayStr);
     const hLog = db.health.get(userId, todayStr);
-
-    setTransactions(txList);
-    setBudgetPlan(budget);
-    setTargets(targetList);
-    setObligations(obList);
-    setWorshipTracker(wLog);
-    setHealthTracker(hLog);
-
-    if (budget) {
-      setBudgetForm({
-        monthly_budget: budget.monthly_budget,
-        limit_alert: budget.limit_alert
-      });
-    }
 
     // AI and Mizan Scores
     const mizanScores = calculateMizanScore(userId);
@@ -187,13 +177,51 @@ export default function MobileEmulator({ onActionLogged }) {
 
     const forecastData = predictBalanceDepletion(userId);
 
-    setMizanScoreData({
-      ...mizanScores,
-      health: adjustedHealth,
-      score: finalMizanScore
-    });
-    setForecast(forecastData);
-  };
+    // Defer state updates to avoid synchronous cascading renders inside useEffect
+    setTimeout(() => {
+      setTransactions(txList);
+      setBudgetPlan(budget);
+      setTargets(targetList);
+      setObligations(obList);
+      setWorshipTracker(wLog);
+      setHealthTracker(hLog);
+      setMizanScoreData({
+        ...mizanScores,
+        health: adjustedHealth,
+        score: finalMizanScore
+      });
+      setForecast(forecastData);
+    }, 0);
+  }, [currentUser]);
+
+  // Screen resize handler for mobile detection
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Initialize data on user changes
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  // Real-time clock and countdown reminder ticker
+  useEffect(() => {
+    const clock = setInterval(() => {
+      setTime(new Date());
+    }, 1000);
+    return () => clearInterval(clock);
+  }, []);
+
+  // Scroll to bottom of chat
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatMessages, isTyping]);
+
+
 
   // Tasbih Handlers
   const incrementTasbih = () => {
@@ -417,24 +445,7 @@ export default function MobileEmulator({ onActionLogged }) {
     if (onActionLogged) onActionLogged();
   };
 
-  // Budget Handlers
-  const handleSaveBudget = (e) => {
-    e.preventDefault();
-    if (!budgetForm.monthly_budget || parseFloat(budgetForm.monthly_budget) <= 0) {
-      showToast('error', 'Mohon isi pagu anggaran bulanan yang valid!');
-      return;
-    }
 
-    db.budgets.save(currentUser.user_id, {
-      monthly_budget: budgetForm.monthly_budget,
-      limit_alert: budgetForm.limit_alert || (budgetForm.monthly_budget * 0.30)
-    });
-
-    if (onActionLogged) onActionLogged();
-    loadData();
-    showToast('success', 'Anggaran berhasil diperbarui!');
-    setFinanceSubTab('pencatatan');
-  };
 
   // Worship & Health Trackers Save
   const toggleWorship = (key) => {
@@ -583,9 +594,7 @@ export default function MobileEmulator({ onActionLogged }) {
       const msg = userMsg.toLowerCase();
       let botResponse = "";
 
-      const monthlyBudget = budgetPlan ? budgetPlan.monthly_budget : 2000000;
       const totalObs = obligations.reduce((sum, o) => sum + o.amount, 0);
-      const sisaUang = Math.max(0, monthlyBudget - totalObs);
       const freeBalance = Math.max(0, finReport.cash - emergencyFund);
 
       if (msg.includes('saldo') || msg.includes('uang') || msg.includes('cash') || msg.includes('sisa') || msg.includes('bebas')) {
@@ -697,7 +706,6 @@ export default function MobileEmulator({ onActionLogged }) {
     const expenses = {};
 
     transactions.forEach(t => {
-      const mapping = classifyTransaction(t.category);
       if (t.transaction_type === 'Masuk') {
         cashBalance += t.amount;
         revenues[t.category] = (revenues[t.category] || 0) + t.amount;
@@ -807,7 +815,7 @@ export default function MobileEmulator({ onActionLogged }) {
     const suggestedSavingRate = sisaUang * 0.20; // 20% savings target
     
     let feasible = true;
-    let advice = "";
+    let advice;
     if (monthly <= suggestedSavingRate) {
       advice = `Tabung Rp ${formatRupiah(monthly)}/bulan selama ${diffMonths} bln. Sangat aman bagi sisa anggaran bulanan Anda (alokasi ideal: ${formatRupiah(suggestedSavingRate)}/bulan).`;
     } else if (monthly <= sisaUang) {
@@ -820,58 +828,7 @@ export default function MobileEmulator({ onActionLogged }) {
     return { monthly, advice, feasible };
   };
 
-  // Helper calculation for next prayer
-  const getNextPrayerInfo = () => {
-    const schedule = PRAYER_SCHEDULES[city] || PRAYER_SCHEDULES.Jakarta;
-    const nowHours = time.getHours();
-    const nowMinutes = time.getMinutes();
-    const nowSeconds = time.getSeconds();
-    const nowTotalSec = nowHours * 3600 + nowMinutes * 60 + nowSeconds;
 
-    const parseSec = (timeStr) => {
-      const [h, m] = timeStr.split(':').map(Number);
-      return h * 3600 + m * 60;
-    };
-
-    const prayers = [
-      { name: 'Subuh', time: schedule.subuh, seconds: parseSec(schedule.subuh) },
-      { name: 'Dzuhur', time: schedule.dzuhur, seconds: parseSec(schedule.dzuhur) },
-      { name: 'Ashar', time: schedule.ashar, seconds: parseSec(schedule.ashar) },
-      { name: 'Maghrib', time: schedule.maghrib, seconds: parseSec(schedule.maghrib) },
-      { name: 'Isya', time: schedule.isya, seconds: parseSec(schedule.isya) }
-    ];
-
-    let next = null;
-    for (let p of prayers) {
-      if (p.seconds > nowTotalSec) {
-        next = p;
-        break;
-      }
-    }
-
-    if (!next) {
-      next = { ...prayers[0], isTomorrow: true };
-    }
-
-    let diffSec = 0;
-    if (next.isTomorrow) {
-      diffSec = (24 * 3600 - nowTotalSec) + next.seconds;
-    } else {
-      diffSec = next.seconds - nowTotalSec;
-    }
-
-    const h = Math.floor(diffSec / 3600);
-    const m = Math.floor((diffSec % 3600) / 60);
-    const s = diffSec % 60;
-    const countdown = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-
-    return {
-      nextPrayerName: next.name,
-      nextPrayerTime: next.time,
-      countdown,
-      diffMinutes: Math.floor(diffSec / 60)
-    };
-  };
 
   const showToast = (type, message) => {
     setToast({ type, message });
@@ -994,8 +951,12 @@ export default function MobileEmulator({ onActionLogged }) {
   const maxWeeklyVal = Math.max(...weeklyData.map(d => Math.max(d.income, d.expense)), 1000);
   const maxMonthlyVal = Math.max(...monthlyData.map(d => Math.max(d.income, d.expense)), 1000);
 
+  const notchAlert = nextPrayerVal.diffMinutes === prayerReminderMin
+    ? `Bersiap! Waktu ${nextPrayerVal.nextPrayerName} akan tiba dalam ${prayerReminderMin} menit (${nextPrayerVal.nextPrayerTime}).`
+    : null;
+
   // Reusable Balance Card Component
-  const BalanceCard = () => (
+  const renderBalanceCard = () => (
     <div className="mizan-card" style={{ borderColor: 'var(--primary)', background: 'linear-gradient(135deg, var(--bg-secondary) 0%, var(--primary-light) 100%)', padding: '1.2rem', gap: '0.8rem', width: '100%' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <span style={{ fontSize: '0.9rem', fontWeight: '700', color: 'var(--text-secondary)' }}>💰 Ringkasan Saldo Kas</span>
@@ -1120,7 +1081,7 @@ export default function MobileEmulator({ onActionLogged }) {
               
               {/* Prominent Balance Display */}
               <div style={{ gridColumn: isMobile ? 'span 1' : 'span 3', width: '100%' }}>
-                <BalanceCard />
+                {renderBalanceCard()}
               </div>
 
               {/* Mizan Score Card */}
@@ -1289,7 +1250,7 @@ export default function MobileEmulator({ onActionLogged }) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
               
               {/* Balance card */}
-              <BalanceCard />
+              {renderBalanceCard()}
 
               {/* Sub tabs navigation */}
               <div style={{ display: 'flex', gap: '6px', background: 'var(--bg-tertiary)', padding: '6px', borderRadius: '8px', maxWidth: '400px' }}>
