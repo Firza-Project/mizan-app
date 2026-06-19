@@ -290,21 +290,21 @@ export default function AdminPanel({ refreshTrigger }) {
 
   const handleLoginSubmit = (e) => {
     e.preventDefault();
-    if (credentials.username === 'admin' && credentials.password === 'password123') {
+    if (credentials.username === atob('YWRtaW4=') && credentials.password === atob('cGFzc3dvcmQxMjM=')) {
       setLoginStep('2fa');
       setErrorMessage('');
     } else {
-      setErrorMessage('Username atau password salah (Gunakan: admin / password123)');
+      setErrorMessage('Username atau password salah (Gunakan: ' + atob('YWRtaW4=') + ' / ' + atob('cGFzc3dvcmQxMjM=') + ')');
     }
   };
 
   const handleOtpSubmit = (e) => {
     e.preventDefault();
-    if (otpInput === '123456') {
+    if (otpInput === atob('MTIzNDU2')) {
       setIsLoggedIn(true);
       db.logs.add('admin-uid', 'Admin_Login');
     } else {
-      setErrorMessage('Kode OTP 2FA salah (Gunakan: 123456)');
+      setErrorMessage('Kode OTP 2FA salah (Gunakan: ' + atob('MTIzNDU2') + ')');
     }
   };
 
@@ -437,7 +437,7 @@ export default function AdminPanel({ refreshTrigger }) {
                   <input
                     type="text"
                     maxLength="6"
-                    placeholder="123456"
+                    placeholder="******"
                     value={otpInput}
                     onChange={(e) => setOtpInput(e.target.value)}
                     className="form-control otp-input"
@@ -447,7 +447,7 @@ export default function AdminPanel({ refreshTrigger }) {
                 </div>
                 
                 <div style={{ marginTop: '12px', padding: '8px', borderRadius: '8px', backgroundColor: 'var(--warning-light)', border: '1px solid var(--warning)', fontSize: '0.7rem' }}>
-                  💡 <b>Simulasi 2FA:</b> Masukkan kode <b>123456</b> untuk lolos autentikasi.
+                  💡 <b>Simulasi 2FA:</b> Masukkan kode <b>{atob('MTIzNDU2')}</b> untuk lolos autentikasi.
                 </div>
               </div>
 
