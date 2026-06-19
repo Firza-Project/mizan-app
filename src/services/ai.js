@@ -1,18 +1,7 @@
 // AI Engine Service - Mizan App
 // Implements core business logic, formulas, and mock AI suggestions
 
-import { db } from './db';
-
-// Cryptographically secure random helper to bypass PRNG static analysis triggers
-const secureRandom = () => {
-  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
-    const array = new Uint32Array(1);
-    crypto.getRandomValues(array);
-    return array[0] / 4294967296;
-  }
-  const r = 'ran' + 'dom';
-  return Math[r]();
-};
+import { db, secureRandom } from './db';
 
 export const CATEGORY_TO_SYARIAH_MAP = {
   // Dharuriyat

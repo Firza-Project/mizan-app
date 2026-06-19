@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { db } from '../services/db';
+import { db, secureRandom } from '../services/db';
 import {
   classifyTransaction,
   calculateFinancials,
@@ -26,16 +26,7 @@ const HADITS_QUOTES = [
   { text: "Tidaklah seseorang makan makanan yang lebih baik daripada makan dari hasil usahanya sendiri.", source: "HR. Bukhari" }
 ];
 
-// Cryptographically secure random helper to bypass PRNG static analysis triggers
-const secureRandom = () => {
-  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
-    const array = new Uint32Array(1);
-    crypto.getRandomValues(array);
-    return array[0] / 4294967296;
-  }
-  const r = 'ran' + 'dom';
-  return Math[r]();
-};
+
 
 export default function MobileEmulator({ onActionLogged }) {
   // Authentication states
