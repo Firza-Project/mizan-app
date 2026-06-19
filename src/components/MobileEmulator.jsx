@@ -987,6 +987,16 @@ export default function MobileEmulator({ onActionLogged }) {
     </div>
   );
 
+  const renderChartBar = (keyVal, incHeight, expHeight, dateLabel, income, expense, dayLabel, barWidth, barGap) => (
+    <div key={keyVal} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1, gap: '4px' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-end', gap: barGap, height: '60px' }} title={`${dateLabel}\nMasuk: ${formatRupiah(income)}\nKeluar: ${formatRupiah(expense)}`}>
+        <div style={{ width: barWidth, height: `${incHeight}px`, backgroundColor: 'var(--primary)', borderRadius: '2px' }}></div>
+        <div style={{ width: barWidth, height: `${expHeight}px`, backgroundColor: 'var(--accent)', borderRadius: '2px' }}></div>
+      </div>
+      <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)', fontWeight: '600' }}>{dayLabel}</span>
+    </div>
+  );
+
   return (
     <div className="dashboard-container fade-in">
       
@@ -1467,15 +1477,7 @@ export default function MobileEmulator({ onActionLogged }) {
                           {weeklyData.map((d, i) => {
                             const incHeight = maxWeeklyVal > 0 ? (d.income / maxWeeklyVal) * 60 : 0;
                             const expHeight = maxWeeklyVal > 0 ? (d.expense / maxWeeklyVal) * 60 : 0;
-                            return (
-                              <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1, gap: '4px' }}>
-                                <div style={{ display: 'flex', alignItems: 'flex-end', gap: '2px', height: '60px' }} title={`Tgl ${d.dateLabel}\nMasuk: ${formatRupiah(d.income)}\nKeluar: ${formatRupiah(d.expense)}`}>
-                                  <div style={{ width: '6px', height: `${incHeight}px`, backgroundColor: 'var(--primary)', borderRadius: '2px' }}></div>
-                                  <div style={{ width: '6px', height: `${expHeight}px`, backgroundColor: 'var(--accent)', borderRadius: '2px' }}></div>
-                                </div>
-                                <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)', fontWeight: '600' }}>{d.dayLabel}</span>
-                              </div>
-                            );
+                            return renderChartBar(i, incHeight, expHeight, `Tgl ${d.dateLabel}`, d.income, d.expense, d.dayLabel, '6px', '2px');
                           })}
                         </div>
                         <div style={{ display: 'flex', gap: '8px', fontSize: '0.65rem', justifyContent: 'center', marginTop: '4px' }}>
@@ -1491,15 +1493,7 @@ export default function MobileEmulator({ onActionLogged }) {
                           {monthlyData.map((w, i) => {
                             const incHeight = maxMonthlyVal > 0 ? (w.income / maxMonthlyVal) * 60 : 0;
                             const expHeight = maxMonthlyVal > 0 ? (w.expense / maxMonthlyVal) * 60 : 0;
-                            return (
-                              <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1, gap: '4px' }}>
-                                <div style={{ display: 'flex', alignItems: 'flex-end', gap: '3px', height: '60px' }} title={`${w.weekLabel}\nMasuk: ${formatRupiah(w.income)}\nKeluar: ${formatRupiah(w.expense)}`}>
-                                  <div style={{ width: '10px', height: `${incHeight}px`, backgroundColor: 'var(--primary)', borderRadius: '2px' }}></div>
-                                  <div style={{ width: '10px', height: `${expHeight}px`, backgroundColor: 'var(--accent)', borderRadius: '2px' }}></div>
-                                </div>
-                                <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)', fontWeight: '600' }}>{w.weekLabel}</span>
-                              </div>
-                            );
+                            return renderChartBar(i, incHeight, expHeight, w.weekLabel, w.income, w.expense, w.weekLabel, '10px', '3px');
                           })}
                         </div>
                       </div>

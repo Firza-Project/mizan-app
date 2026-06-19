@@ -74,6 +74,41 @@ export default function AdminPanel({ refreshTrigger }) {
     }).format(num);
   };
 
+  const renderChartBarGroup = (keyVal, xCenter, barWidth, yMasuk, hMasuk, yKeluar, hKeluar, masukVal, keluarVal, labelText, heightVal) => (
+    <g key={keyVal}>
+      {/* Masuk Bar (Sage Green) */}
+      <rect
+        className="chart-bar"
+        x={xCenter - barWidth - 2}
+        y={yMasuk}
+        width={barWidth}
+        height={hMasuk}
+        fill="var(--primary)"
+        rx="3"
+      >
+        <title>{`Masuk: ${formatRupiah(masukVal)}`}</title>
+      </rect>
+
+      {/* Keluar Bar (Terracotta Clay) */}
+      <rect
+        className="chart-bar"
+        x={xCenter + 2}
+        y={yKeluar}
+        width={barWidth}
+        height={hKeluar}
+        fill="var(--accent)"
+        rx="3"
+      >
+        <title>{`Keluar: ${formatRupiah(keluarVal)}`}</title>
+      </rect>
+
+      {/* Labels */}
+      <text x={xCenter} y={heightVal + 15} fill="var(--text-secondary)" fontSize="9" fontWeight="600" textAnchor="middle">
+        {labelText}
+      </text>
+    </g>
+  );
+
   const renderWeeklyChart = () => {
     // 4 weeks of the current month
     const weeklySums = [
@@ -125,40 +160,7 @@ export default function AdminPanel({ refreshTrigger }) {
             const yMasuk = height - hMasuk;
             const yKeluar = height - hKeluar;
 
-            return (
-              <g key={w.week}>
-                {/* Masuk Bar (Sage Green) */}
-                <rect
-                  className="chart-bar"
-                  x={xCenter - barWidth - 2}
-                  y={yMasuk}
-                  width={barWidth}
-                  height={hMasuk}
-                  fill="var(--primary)"
-                  rx="3"
-                >
-                  <title>{`Masuk: ${formatRupiah(w.masuk)}`}</title>
-                </rect>
-
-                {/* Keluar Bar (Terracotta Clay) */}
-                <rect
-                  className="chart-bar"
-                  x={xCenter + 2}
-                  y={yKeluar}
-                  width={barWidth}
-                  height={hKeluar}
-                  fill="var(--accent)"
-                  rx="3"
-                >
-                  <title>{`Keluar: ${formatRupiah(w.keluar)}`}</title>
-                </rect>
-
-                {/* Labels */}
-                <text x={xCenter} y={height + 15} fill="var(--text-secondary)" fontSize="9" fontWeight="600" textAnchor="middle">
-                  {w.week}
-                </text>
-              </g>
-            );
+            return renderChartBarGroup(w.week, xCenter, barWidth, yMasuk, hMasuk, yKeluar, hKeluar, w.masuk, w.keluar, w.week, height);
           })}
         </svg>
         <div className="chart-legend">
@@ -238,40 +240,7 @@ export default function AdminPanel({ refreshTrigger }) {
             const yMasuk = height - hMasuk;
             const yKeluar = height - hKeluar;
 
-            return (
-              <g key={key}>
-                {/* Masuk Bar (Sage Green) */}
-                <rect
-                  className="chart-bar"
-                  x={xCenter - barWidth - 2}
-                  y={yMasuk}
-                  width={barWidth}
-                  height={hMasuk}
-                  fill="var(--primary)"
-                  rx="3"
-                >
-                  <title>{`Masuk: ${formatRupiah(data.masuk)}`}</title>
-                </rect>
-
-                {/* Keluar Bar (Terracotta Clay) */}
-                <rect
-                  className="chart-bar"
-                  x={xCenter + 2}
-                  y={yKeluar}
-                  width={barWidth}
-                  height={hKeluar}
-                  fill="var(--accent)"
-                  rx="3"
-                >
-                  <title>{`Keluar: ${formatRupiah(data.keluar)}`}</title>
-                </rect>
-
-                {/* Labels */}
-                <text x={xCenter} y={height + 15} fill="var(--text-secondary)" fontSize="9" fontWeight="600" textAnchor="middle">
-                  {m.label}
-                </text>
-              </g>
-            );
+            return renderChartBarGroup(key, xCenter, barWidth, yMasuk, hMasuk, yKeluar, hKeluar, data.masuk, data.keluar, m.label, height);
           })}
         </svg>
         <div className="chart-legend">
