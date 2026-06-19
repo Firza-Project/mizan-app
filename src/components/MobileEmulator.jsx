@@ -51,7 +51,7 @@ export default function MobileEmulator({ onActionLogged }) {
   const [obligations, setObligations] = useState([]);
   
   // Custom features
-  const [emergencyFund, setEmergencyFund] = useState(300000); // Saldo Aman / Dana Cadangan
+  const [emergencyFund, setEmergencyFund] = useState(0); // Saldo Aman / Dana Cadangan
   const [city, setCity] = useState('Jakarta');
   const [time, setTime] = useState(new Date());
   const [prayerReminderMin, setPrayerReminderMin] = useState(10); // minutes before
