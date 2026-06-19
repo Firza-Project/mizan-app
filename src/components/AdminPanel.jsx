@@ -109,6 +109,19 @@ export default function AdminPanel({ refreshTrigger }) {
     </g>
   );
 
+  const renderChartLegend = () => (
+    <div className="chart-legend">
+      <div className="legend-item">
+        <div className="legend-color" style={{ backgroundColor: 'var(--primary)' }}></div>
+        <span>Masuk</span>
+      </div>
+      <div className="legend-item">
+        <div className="legend-color" style={{ backgroundColor: 'var(--accent)' }}></div>
+        <span>Keluar</span>
+      </div>
+    </div>
+  );
+
   const renderWeeklyChart = () => {
     // 4 weeks of the current month
     const weeklySums = [
@@ -163,16 +176,7 @@ export default function AdminPanel({ refreshTrigger }) {
             return renderChartBarGroup(w.week, xCenter, barWidth, yMasuk, hMasuk, yKeluar, hKeluar, w.masuk, w.keluar, w.week, height);
           })}
         </svg>
-        <div className="chart-legend">
-          <div className="legend-item">
-            <div className="legend-color" style={{ backgroundColor: 'var(--primary)' }}></div>
-            <span>Masuk</span>
-          </div>
-          <div className="legend-item">
-            <div className="legend-color" style={{ backgroundColor: 'var(--accent)' }}></div>
-            <span>Keluar</span>
-          </div>
-        </div>
+        {renderChartLegend()}
       </div>
     );
   };
@@ -243,16 +247,7 @@ export default function AdminPanel({ refreshTrigger }) {
             return renderChartBarGroup(key, xCenter, barWidth, yMasuk, hMasuk, yKeluar, hKeluar, data.masuk, data.keluar, m.label, height);
           })}
         </svg>
-        <div className="chart-legend">
-          <div className="legend-item">
-            <div className="legend-color" style={{ backgroundColor: 'var(--primary)' }}></div>
-            <span>Masuk</span>
-          </div>
-          <div className="legend-item">
-            <div className="legend-color" style={{ backgroundColor: 'var(--accent)' }}></div>
-            <span>Keluar</span>
-          </div>
-        </div>
+        {renderChartLegend()}
       </div>
     );
   };
