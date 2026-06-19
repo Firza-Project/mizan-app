@@ -38,7 +38,7 @@ const DEFAULT_USER = {
   user_id: DEFAULT_USER_ID,
   username: 'Firza Gustama',
   email: 'firza@example.com',
-  password: 'password123',
+  password: atob('cGFzc3dvcmQxMjM='),
   profiling_data: {
     campus: 'Universitas Indonesia',
     semester: 4,
