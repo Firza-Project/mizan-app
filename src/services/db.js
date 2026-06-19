@@ -56,31 +56,11 @@ const DEFAULT_BUDGET = {
   monthly_budget: 2000000
 };
 
-const INITIAL_TRANSACTIONS = [
-  { trans_id: generateUUID(), user_id: DEFAULT_USER_ID, amount: 2500000, category: 'pemasukan_ortu', priority_tag: 'Dharuriyat', transaction_type: 'Masuk', date: '2026-06-01' },
-  { trans_id: generateUUID(), user_id: DEFAULT_USER_ID, amount: 800000, category: 'kos_tempat_tinggal', priority_tag: 'Dharuriyat', transaction_type: 'Keluar', date: '2026-06-02' },
-  { trans_id: generateUUID(), user_id: DEFAULT_USER_ID, amount: 500000, category: 'spp_ukt', priority_tag: 'Dharuriyat', transaction_type: 'Keluar', date: '2026-06-03' },
-  { trans_id: generateUUID(), user_id: DEFAULT_USER_ID, amount: 200000, category: 'makanan_pokok', priority_tag: 'Dharuriyat', transaction_type: 'Keluar', date: '2026-06-05' },
-  { trans_id: generateUUID(), user_id: DEFAULT_USER_ID, amount: 100000, category: 'transportasi_kuliah', priority_tag: 'Dharuriyat', transaction_type: 'Keluar', date: '2026-06-07' },
-  { trans_id: generateUUID(), user_id: DEFAULT_USER_ID, amount: 150000, category: 'buku_kuliah', priority_tag: 'Hajiyat', transaction_type: 'Keluar', date: '2026-06-06' },
-  { trans_id: generateUUID(), user_id: DEFAULT_USER_ID, amount: 100000, category: 'paket_internet', priority_tag: 'Hajiyat', transaction_type: 'Keluar', date: '2026-06-08' },
-  { trans_id: generateUUID(), user_id: DEFAULT_USER_ID, amount: 50000, category: 'kopi_cafe', priority_tag: 'Tahsiniyat', transaction_type: 'Keluar', date: '2026-06-04' },
-  { trans_id: generateUUID(), user_id: DEFAULT_USER_ID, amount: 75000, category: 'hiburan', priority_tag: 'Tahsiniyat', transaction_type: 'Keluar', date: '2026-06-09' },
-  { trans_id: generateUUID(), user_id: DEFAULT_USER_ID, amount: 120000, category: 'hangout', priority_tag: 'Tahsiniyat', transaction_type: 'Keluar', date: '2026-06-12' },
-  { trans_id: generateUUID(), user_id: DEFAULT_USER_ID, amount: 50000, category: 'sedekah', priority_tag: 'Hajiyat', transaction_type: 'Keluar', date: '2026-06-10' }
-];
-
-const INITIAL_WORSHIP = [
-  { user_id: DEFAULT_USER_ID, date: '2026-06-18', subuh: true, dzuhur: true, ashar: true, maghrib: true, isya: true, sunnah: true, tilawah: 5 },
-  { user_id: DEFAULT_USER_ID, date: '2026-06-19', subuh: true, dzuhur: true, ashar: true, maghrib: false, isya: false, sunnah: false, tilawah: 2 }
-];
-
-const INITIAL_HEALTH = [
-  { user_id: DEFAULT_USER_ID, date: '2026-06-18', water: 8, sleep_hours: 7.5, exercise: true, healthy_food: true, read_book: true },
-  { user_id: DEFAULT_USER_ID, date: '2026-06-19', water: 5, sleep_hours: 6.0, exercise: false, healthy_food: true, read_book: false }
-];
-
+const INITIAL_TRANSACTIONS = [];
+const INITIAL_WORSHIP = [];
+const INITIAL_HEALTH = [];
 const INITIAL_TARGETS = [];
+
 
 export const initDB = () => {
   if (!localStorage.getItem('mizan_users')) {
