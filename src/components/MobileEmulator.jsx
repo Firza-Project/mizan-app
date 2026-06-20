@@ -414,20 +414,67 @@ export default function MobileEmulator({ onActionLogged }) {
     const today = new Date();
     const dateString = today.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
     
-    let evaluation = "EVALUASI AI KESEHATAN FINANSIAL MIZAN:\n";
-    evaluation += "=========================================\n";
-    
     const savingsPercent = finReportData.totalRevenues > 0 
       ? ((finReportData.totalRevenues - finReportData.totalExpenses) / finReportData.totalRevenues) * 100 
       : 0;
-      
+
+    let csvContent = "sep=,\n"; // Paksa Excel menggunakan pemisah koma
+    csvContent += "LAPORAN KEUANGAN PRIBADI MIZAN\n";
+    csvContent += `Tanggal Laporan,${dateString}\n`;
+    csvContent += `Pengguna,${currentUser.username}\n\n`;
+
+    csvContent += "1. RINGKASAN ARUS KAS BULAN INI\n";
+    csvContent += "Keterangan,Nominal (Rupiah)\n";
+    csvContent += `Total Pemasukan,${finReportData.totalRevenues}\n`;
+    csvContent += `Total Pengeluaran,-${finReportData.totalExpenses}\n`;
+    csvContent += `Surplus / Sisa Uang,${finReportData.netProfit}\n`;
+    csvContent += `Savings Rate,${savingsPercent.toFixed(1)}%\n\n`;
+
+    csvContent += "2. TREN KEUANGAN 3 BULAN TERAKHIR\n";
+    csvContent += "Bulan,Pemasukan,Pengeluaran,Surplus\n";
+    const trendData = getCalendarMonthsAccumulation();
+    trendData.forEach(m => {
+      const surplus = m.income - m.expense;
+      csvContent += `${m.monthLabel},${m.income},${m.expense},${surplus}\n`;
+    });
+    csvContent += "\n";
+
+    csvContent += "3. DETAIL PENGELUARAN POS SYARIAH\n";
+    csvContent += "Kategori Pengeluaran,Nominal (Rupiah),Persentase,Prioritas Syariah\n";
+    const categoryItems = Object.entries(finReportData.expenses).map(([key, val]) => ({
+      key,
+      value: val,
+      label: CATEGORY_TO_SYARIAH_MAP[key]?.label || key,
+      pct: (val / (finReportData.totalExpenses || 1)) * 100
+    })).sort((a, b) => b.value - a.value);
+
+    categoryItems.forEach(cat => {
+      csvContent += `"${cat.label}",${cat.value},${cat.pct.toFixed(1)}%,${classifyTransaction(cat.key).priority_tag}\n`;
+    });
+    csvContent += "\n";
+
+    csvContent += "4. PROGRESS GOL KEUANGAN (WISHLIST IMPIAN)\n";
+    csvContent += "Wishlist Impian,Terkumpul,Target Nominal,Persentase,Deadline,Status Rekomendasi\n";
+    if (targets.length === 0) {
+      csvContent += "Belum ada wishlist impian aktif.,,,,\n";
+    } else {
+      targets.forEach(tg => {
+        const percent = Math.min(100, Math.round((tg.current_amount / tg.target_amount) * 100));
+        const advice = getWishlistAdvice(tg);
+        csvContent += `"${tg.title.replace(/"/g, '""')}",${tg.current_amount},${tg.target_amount},${percent}%,${tg.deadline},"${advice.advice.replace(/"/g, '""')}"\n`;
+      });
+    }
+    csvContent += "\n";
+
+    csvContent += "5. EVALUASI DAN REKOMENDASI AI MIZAN\n";
+    let evaluation = "";
     if (finReportData.totalRevenues === 0) {
-      evaluation += "• Belum ada pemasukan yang tercatat bulan ini. Silakan catat uang saku/gaji Anda.\n";
+      evaluation += "Belum ada pemasukan yang tercatat bulan ini. ";
     } else {
       if (savingsPercent >= 20) {
-        evaluation += `• Tingkat tabungan Anda sangat baik: ${savingsPercent.toFixed(1)}% (Target ideal: >= 20%). Pertahankan konsistensi ini untuk mengamankan masa depan Anda.\n`;
+        evaluation += `Tingkat tabungan Anda sangat baik: ${savingsPercent.toFixed(1)}% (Target ideal >= 20%). `;
       } else {
-        evaluation += `• Tingkat tabungan Anda cukup rendah: ${savingsPercent.toFixed(1)}% (Di bawah target ideal 20%). Cobalah untuk menekan pos pengeluaran sekunder/tersier.\n`;
+        evaluation += `Tingkat tabungan Anda cukup rendah: ${savingsPercent.toFixed(1)}% (Di bawah target ideal 20%). `;
       }
     }
     
@@ -438,86 +485,26 @@ export default function MobileEmulator({ onActionLogged }) {
         tahsiniyatTotal += val;
       }
     });
-    
     if (finReportData.totalExpenses > 0) {
       const tahsiniyatRatio = (tahsiniyatTotal / finReportData.totalExpenses) * 100;
       if (tahsiniyatRatio > 40) {
-        evaluation += `• Peringatan Israf: Pengeluaran untuk Gaya Hidup / Tersier (Tahsiniyat) mencapai ${tahsiniyatRatio.toFixed(1)}% dari total pengeluaran. Batasi kebiasaan nongkrong & jajan.\n`;
+        evaluation += `Peringatan Israf: Pengeluaran Gaya Hidup (Tahsiniyat) mencapai ${tahsiniyatRatio.toFixed(1)}%. `;
       } else {
-        evaluation += `• Pola hidup sehat! Pengeluaran gaya hidup Anda (${tahsiniyatRatio.toFixed(1)}%) terkontrol di bawah batas maksimum 40%.\n`;
+        evaluation += `Pola hidup sehat! Pengeluaran gaya hidup Anda (${tahsiniyatRatio.toFixed(1)}%) terkontrol di bawah 40%. `;
       }
     }
+    csvContent += `Kesimpulan AI Mizan,"${evaluation.trim()}"\n`;
 
-    const trendData = getCalendarMonthsAccumulation();
-    let trendText = "";
-    trendData.forEach(m => {
-      const surplus = m.income - m.expense;
-      trendText += `- ${m.monthLabel.padEnd(10)}: Masuk ${formatRupiah(m.income)} | Keluar ${formatRupiah(m.expense)} (Surplus: ${formatRupiah(surplus)})\n`;
-    });
-
-    let wishlistText = "";
-    if (targets.length === 0) {
-      wishlistText = "Belum ada wishlist impian aktif.\n";
-    } else {
-      targets.forEach(tg => {
-        const percent = Math.min(100, Math.round((tg.current_amount / tg.target_amount) * 100));
-        const advice = getWishlistAdvice(tg);
-        wishlistText += `- ${tg.title.padEnd(20)}: Terkumpul ${formatRupiah(tg.current_amount)} / ${formatRupiah(tg.target_amount)} (${percent}%)\n  Deadline: ${tg.deadline} (${advice.advice})\n`;
-      });
-    }
-
-    const categoryItems = Object.entries(finReportData.expenses).map(([key, val]) => ({
-      key,
-      value: val,
-      label: CATEGORY_TO_SYARIAH_MAP[key]?.label || key,
-      pct: (val / (finReportData.totalExpenses || 1)) * 100
-    }));
-
-    const reportContent = `
-=========================================
-      LAPORAN KEUANGAN PRIBADI MIZAN
-=========================================
-Tanggal Laporan : ${dateString}
-Pengguna        : ${currentUser.username}
-
-1. RINGKASAN ARUS KAS BULAN INI
------------------------------------------
-Total Pemasukan   : ${formatRupiah(finReportData.totalRevenues)}
-Total Pengeluaran  : -${formatRupiah(finReportData.totalExpenses)}
------------------------------------------
-Surplus/Sisa Uang : ${formatRupiah(finReportData.netProfit)} (Savings Rate: ${savingsPercent.toFixed(1)}%)
-
-2. TREN KEUANGAN 3 BULAN TERAKHIR
------------------------------------------
-${trendText}
-3. DETAIL PENGELUARAN POS SYARIAH
------------------------------------------
-${categoryItems.map(cat => {
-  return `  - ${cat.label.padEnd(25)} : ${formatRupiah(cat.value)} (${cat.pct.toFixed(1)}%) [${classifyTransaction(cat.key).priority_tag}]`;
-}).join('\n')}
-
-4. PROGRESS GOL KEUANGAN (WISHLIST IMPIAN)
------------------------------------------
-${wishlistText}
------------------------------------------
-5. EVALUASI DAN REKOMENDASI AI MIZAN
------------------------------------------
-${evaluation}
-=========================================
-    Keseimbangan Keuangan, Berkah Kehidupan!
-=========================================
-`;
-
-    const blob = new Blob([reportContent], { type: 'text/plain;charset=utf-8' });
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `Laporan_Keuangan_Mizan_${new Date().toISOString().split('T')[0]}.txt`;
+    link.download = `Laporan_Keuangan_Mizan_${new Date().toISOString().split('T')[0]}.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-    showToast('success', 'Laporan keuangan berhasil diunduh!');
+    showToast('success', 'Laporan keuangan berhasil diunduh dalam format Excel (CSV)!');
   };
 
   // Obligations Handlers
@@ -791,6 +778,18 @@ ${evaluation}
 
   // Double-Entry Accounting Mappings
   const getGeneralJournal = () => {
+    const INCOME_LABELS = {
+      gaji: 'Gaji',
+      uang_saku: 'Uang Saku',
+      freelance: 'Freelance',
+      hadiah: 'Hadiah',
+      bonus: 'Bonus',
+      beasiswa: 'Beasiswa',
+      investasi: 'Investasi',
+      penjualan_barang: 'Penjualan Barang',
+      lainnya: 'Lain-lain'
+    };
+
     const journal = [];
     transactions.forEach((t) => {
       const mapping = classifyTransaction(t.category);
@@ -798,7 +797,8 @@ ${evaluation}
         journal.push({
           date: t.date,
           id: `${t.trans_id}-d`,
-          account: 'Debit: Kas (Cash)',
+          type: 'debit',
+          account: 'Kas',
           debit: t.amount,
           credit: 0,
           desc: t.description
@@ -806,7 +806,8 @@ ${evaluation}
         journal.push({
           date: t.date,
           id: `${t.trans_id}-c`,
-          account: `Kredit: Pendapatan - ${t.category.toUpperCase().replace('_', ' ')}`,
+          type: 'credit',
+          account: `Pendapatan - ${INCOME_LABELS[t.category] || t.category.toUpperCase().replace('_', ' ')}`,
           debit: 0,
           credit: t.amount,
           desc: t.description
@@ -815,7 +816,8 @@ ${evaluation}
         journal.push({
           date: t.date,
           id: `${t.trans_id}-d`,
-          account: `Debit: Beban - ${mapping.label} (${t.priority_tag})`,
+          type: 'debit',
+          account: `Beban - ${mapping.label}`,
           debit: t.amount,
           credit: 0,
           desc: t.description
@@ -823,7 +825,8 @@ ${evaluation}
         journal.push({
           date: t.date,
           id: `${t.trans_id}-c`,
-          account: 'Kredit: Kas (Cash)',
+          type: 'credit',
+          account: 'Kas',
           debit: 0,
           credit: t.amount,
           desc: t.description
@@ -1656,17 +1659,6 @@ ${evaluation}
                         </div>
                       </div>
 
-                      {/* Monthly Chart */}
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '8px' }}>
-                        <span style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Grafik Bulanan (4 Minggu Terakhir)</span>
-                        <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'flex-end', height: '80px', borderBottom: '1px solid var(--border-color)', paddingBottom: '4px', marginTop: '6px' }}>
-                          {monthlyData.map((w, i) => {
-                            const incHeight = maxMonthlyVal > 0 ? (w.income / maxMonthlyVal) * 60 : 0;
-                            const expHeight = maxMonthlyVal > 0 ? (w.expense / maxMonthlyVal) * 60 : 0;
-                            return renderChartBar(i, incHeight, expHeight, w.weekLabel, w.income, w.expense, w.weekLabel, '10px', '3px');
-                          })}
-                        </div>
-                      </div>
                     </div>
 
                     {/* Emergency Fund Setup */}
@@ -1824,13 +1816,13 @@ ${evaluation}
                       </thead>
                       <tbody>
                         {getGeneralJournal().map((entry) => (
-                          <tr key={entry.id} className={entry.account.startsWith('Kredit:') ? 'credit-row' : ''}>
+                          <tr key={entry.id} className={entry.type === 'credit' ? 'credit-row' : ''}>
                             <td style={{ color: 'var(--text-muted)', fontSize: '0.75rem', verticalAlign: 'top', padding: '10px' }}>
-                              {entry.account.startsWith('Debit:') ? entry.date : ''}
+                              {entry.type === 'debit' ? entry.date : ''}
                             </td>
                             <td style={{ padding: '10px' }}>
-                              <div style={{ fontWeight: '600', fontSize: '0.85rem' }}>{entry.account}</div>
-                              {entry.account.startsWith('Debit:') && <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontStyle: 'italic', marginTop: '2px' }}>({entry.desc})</div>}
+                              <div style={{ fontWeight: '600', fontSize: '0.85rem', paddingLeft: entry.type === 'credit' ? '20px' : '0px' }}>{entry.account}</div>
+                              {entry.type === 'debit' && <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontStyle: 'italic', marginTop: '2px' }}>({entry.desc})</div>}
                             </td>
                             <td style={{ textAlign: 'right', padding: '10px', fontSize: '0.85rem' }}>{entry.debit > 0 ? formatRupiah(entry.debit) : '-'}</td>
                             <td style={{ textAlign: 'right', padding: '10px', fontSize: '0.85rem' }}>{entry.credit > 0 ? formatRupiah(entry.credit) : '-'}</td>
