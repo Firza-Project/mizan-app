@@ -414,11 +414,6 @@ export default function MobileEmulator({ onActionLogged }) {
     const today = new Date();
     const dateString = today.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
     
-    const cashValue = finReportData.cash;
-    const assets = cashValue;
-    const debt = unpaidObligationsAmount;
-    const netWorthVal = assets - debt;
-    
     let evaluation = "EVALUASI AI KESEHATAN FINANSIAL MIZAN:\n";
     evaluation += "=========================================\n";
     
@@ -436,17 +431,6 @@ export default function MobileEmulator({ onActionLogged }) {
       }
     }
     
-    if (debt > 0) {
-      const debtRatio = (debt / assets) * 100;
-      if (debtRatio > 30) {
-        evaluation += `• Peringatan Utang Tinggi: Utang/Paylater Anda sebesar ${formatRupiah(debt)} mencapai ${debtRatio.toFixed(1)}% dari total aset Anda. Batasi transaksi kredit baru!\n`;
-      } else {
-        evaluation += `• Rasio utang terhadap aset Anda aman (${debtRatio.toFixed(1)}%). Pastikan untuk melunasi cicilan tepat waktu sebelum jatuh tempo.\n`;
-      }
-    } else {
-      evaluation += "• Luar biasa! Anda tidak memiliki utang atau cicilan aktif bulan ini. Kekayaan Bersih Anda dalam kondisi prima.\n";
-    }
-    
     let tahsiniyatTotal = 0;
     Object.entries(finReportData.expenses).forEach(([key, val]) => {
       const mapping = classifyTransaction(key);
@@ -459,7 +443,27 @@ export default function MobileEmulator({ onActionLogged }) {
       const tahsiniyatRatio = (tahsiniyatTotal / finReportData.totalExpenses) * 100;
       if (tahsiniyatRatio > 40) {
         evaluation += `• Peringatan Israf: Pengeluaran untuk Gaya Hidup / Tersier (Tahsiniyat) mencapai ${tahsiniyatRatio.toFixed(1)}% dari total pengeluaran. Batasi kebiasaan nongkrong & jajan.\n`;
+      } else {
+        evaluation += `• Pola hidup sehat! Pengeluaran gaya hidup Anda (${tahsiniyatRatio.toFixed(1)}%) terkontrol di bawah batas maksimum 40%.\n`;
       }
+    }
+
+    const trendData = getCalendarMonthsAccumulation();
+    let trendText = "";
+    trendData.forEach(m => {
+      const surplus = m.income - m.expense;
+      trendText += `- ${m.monthLabel.padEnd(10)}: Masuk ${formatRupiah(m.income)} | Keluar ${formatRupiah(m.expense)} (Surplus: ${formatRupiah(surplus)})\n`;
+    });
+
+    let wishlistText = "";
+    if (targets.length === 0) {
+      wishlistText = "Belum ada wishlist impian aktif.\n";
+    } else {
+      targets.forEach(tg => {
+        const percent = Math.min(100, Math.round((tg.current_amount / tg.target_amount) * 100));
+        const advice = getWishlistAdvice(tg);
+        wishlistText += `- ${tg.title.padEnd(20)}: Terkumpul ${formatRupiah(tg.current_amount)} / ${formatRupiah(tg.target_amount)} (${percent}%)\n  Deadline: ${tg.deadline} (${advice.advice})\n`;
+      });
     }
 
     const categoryItems = Object.entries(finReportData.expenses).map(([key, val]) => ({
@@ -473,42 +477,34 @@ export default function MobileEmulator({ onActionLogged }) {
 =========================================
       LAPORAN KEUANGAN PRIBADI MIZAN
 =========================================
-Tanggal Ekspor : ${dateString}
-Pengguna       : ${currentUser.username}
+Tanggal Laporan : ${dateString}
+Pengguna        : ${currentUser.username}
 
-1. RINGKASAN ARUS KAS (CASH FLOW)
+1. RINGKASAN ARUS KAS BULAN INI
 -----------------------------------------
 Total Pemasukan   : ${formatRupiah(finReportData.totalRevenues)}
 Total Pengeluaran  : -${formatRupiah(finReportData.totalExpenses)}
 -----------------------------------------
-Surplus/Sisa Uang : ${formatRupiah(finReportData.netProfit)}
+Surplus/Sisa Uang : ${formatRupiah(finReportData.netProfit)} (Savings Rate: ${savingsPercent.toFixed(1)}%)
 
-2. NERACA KEKAYAAN BERSIH
+2. TREN KEUANGAN 3 BULAN TERAKHIR
 -----------------------------------------
-SISI KIRI (Aset Saya):
-  - Dompet / Kas Bebas : ${formatRupiah(Math.max(0, cashValue - emergencyFund))}
-  - Dana Cadangan      : ${formatRupiah(emergencyFund)}
-  * Total Aset Saya    : ${formatRupiah(assets)}
-
-SISI KANAN (Kewajiban & Kekayaan):
-  - Utang / Cicilan    : ${formatRupiah(debt)}
-  - Kekayaan Bersih    : ${formatRupiah(netWorthVal)}
-  * Total Sisi Kanan   : ${formatRupiah(debt + netWorthVal)}
-
-Status Neraca: SEIMBANG (Balanced)
-
-3. RINCIAN PENGELUARAN KATEGORI
+${trendText}
+3. DETAIL PENGELUARAN POS SYARIAH
 -----------------------------------------
 ${categoryItems.map(cat => {
   return `  - ${cat.label.padEnd(25)} : ${formatRupiah(cat.value)} (${cat.pct.toFixed(1)}%) [${classifyTransaction(cat.key).priority_tag}]`;
 }).join('\n')}
 
+4. PROGRESS GOL KEUANGAN (WISHLIST IMPIAN)
 -----------------------------------------
-4. EVALUASI DAN REKOMENDASI AI MIZAN
+${wishlistText}
+-----------------------------------------
+5. EVALUASI DAN REKOMENDASI AI MIZAN
 -----------------------------------------
 ${evaluation}
 =========================================
-    Pertahankan Keseimbangan Hidup Anda!
+    Keseimbangan Keuangan, Berkah Kehidupan!
 =========================================
 `;
 
@@ -926,6 +922,45 @@ ${evaluation}
       
       data.push({
         weekLabel: `Mgg ${4 - w}`,
+        income,
+        expense
+      });
+    }
+    return data;
+  };
+
+  const getCalendarMonthsAccumulation = () => {
+    const data = [];
+    const now = new Date();
+    
+    // We want the last 3 months (current month and 2 months prior)
+    for (let i = 2; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const year = d.getFullYear();
+      const monthIndex = d.getMonth();
+      const monthLabel = d.toLocaleDateString('id-ID', { month: 'long' });
+      
+      let income = 0;
+      let expense = 0;
+      
+      transactions.forEach(t => {
+        const parts = t.date.split('-');
+        if (parts.length === 3) {
+          const txYear = parseInt(parts[0], 10);
+          const txMonth = parseInt(parts[1], 10) - 1;
+          if (txYear === year && txMonth === monthIndex) {
+            if (t.transaction_type === 'Masuk') {
+              income += t.amount;
+            } else {
+              expense += t.amount;
+            }
+          }
+        }
+      });
+      
+      data.push({
+        monthLabel,
+        year,
         income,
         expense
       });
@@ -1814,10 +1849,6 @@ ${evaluation}
 
               {/* Sub tab content: LAPORAN */}
               {financeSubTab === 'laporan' && (() => {
-                const totalAssets = finReportData.cash;
-                const totalDebt = unpaidObligationsAmount;
-                const netWorth = totalAssets - totalDebt;
-
                 const totalExp = finReportData.totalExpenses;
                 const categoryItems = Object.entries(finReportData.expenses).map(([key, value]) => {
                   const pct = totalExp > 0 ? (value / totalExp) * 100 : 0;
@@ -1844,6 +1875,9 @@ ${evaluation}
                   '#5c5346', // Muted brown
                   '#889ca0', // Soft blue-grey
                 ];
+
+                const trendList = getCalendarMonthsAccumulation();
+                const trendMax = Math.max(...trendList.map(x => Math.max(x.income, x.expense)), 1000);
 
                 return (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', width: '100%' }}>
@@ -1872,53 +1906,43 @@ ${evaluation}
                         </div>
                       </div>
 
-                      {/* 2. Balanced Net Worth Tracker */}
-                      <div className="mizan-card" style={{ padding: '1.5rem', gap: '0.8rem' }}>
+                      {/* 2. Monthly Trend Chart */}
+                      <div className="mizan-card" style={{ padding: '1.5rem', gap: '1rem' }}>
                         <div className="mizan-card-title">
-                          <span style={{ fontSize: '1.1rem', fontWeight: 'bold' }}>⚖️ Neraca Kekayaan Bersih</span>
-                          <span style={{ fontSize: '0.75rem', color: 'var(--primary)', fontWeight: 'bold' }}>Balanced</span>
+                          <span style={{ fontSize: '1.1rem', fontWeight: 'bold' }}>📊 Tren Keuangan Bulanan</span>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>3 Bulan Terakhir</span>
                         </div>
                         
-                        {/* Visual Timbangan Kekayaan Bersih */}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', margin: '4px 0 8px' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: 'var(--text-secondary)', fontWeight: '600' }}>
-                            <span>Kekayaan Bersih ({Math.round(totalAssets > 0 ? (netWorth / totalAssets) * 100 : 100)}%)</span>
-                            <span>Utang ({Math.round(totalAssets > 0 ? (totalDebt / totalAssets) * 100 : 0)}%)</span>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'flex-end', height: '90px', borderBottom: '1px solid var(--border-color)', paddingBottom: '6px', paddingTop: '10px' }}>
+                            {trendList.map((m, idx) => {
+                              const incHeight = (m.income / trendMax) * 70;
+                              const expHeight = (m.expense / trendMax) * 70;
+                              return (
+                                <div key={idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1, gap: '4px' }}>
+                                  <div style={{ display: 'flex', alignItems: 'flex-end', gap: '4px', height: '70px' }} title={`${m.monthLabel} ${m.year}\nMasuk: ${formatRupiah(m.income)}\nKeluar: ${formatRupiah(m.expense)}`}>
+                                    <div style={{ width: '14px', height: `${incHeight}px`, backgroundColor: 'var(--primary)', borderRadius: '2px', transition: 'height 0.3s' }}></div>
+                                    <div style={{ width: '14px', height: `${expHeight}px`, backgroundColor: 'var(--accent)', borderRadius: '2px', transition: 'height 0.3s' }}></div>
+                                  </div>
+                                  <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', fontWeight: '600', textAlign: 'center' }}>
+                                    {m.monthLabel.substring(0, 3)}
+                                  </span>
+                                </div>
+                              );
+                            })}
                           </div>
-                          <div style={{ height: '8px', width: '100%', backgroundColor: 'var(--bg-tertiary)', borderRadius: '4px', overflow: 'hidden', display: 'flex', border: '1px solid var(--border-color)' }}>
-                            <div style={{ height: '100%', width: `${totalAssets > 0 ? Math.max(0, (netWorth / totalAssets) * 100) : 100}%`, backgroundColor: 'var(--primary)', transition: 'width 0.3s' }}></div>
-                            <div style={{ height: '100%', width: `${totalAssets > 0 ? Math.max(0, (totalDebt / totalAssets) * 100) : 0}%`, backgroundColor: 'var(--accent)', transition: 'width 0.3s' }}></div>
+                          
+                          <div style={{ display: 'flex', gap: '12px', fontSize: '0.65rem', justifyContent: 'center', marginTop: '2px' }}>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              <div style={{ width: '8px', height: '8px', backgroundColor: 'var(--primary)', borderRadius: '50%' }}></div>
+                              Masuk
+                            </span>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              <div style={{ width: '8px', height: '8px', backgroundColor: 'var(--accent)', borderRadius: '50%' }}></div>
+                              Keluar
+                            </span>
                           </div>
                         </div>
-
-                        <table className="accounting-table" style={{ fontSize: '0.8rem' }}>
-                          <thead>
-                            <tr>
-                              <th colSpan="2" style={{ textAlign: 'left', color: 'var(--primary)' }}>Aset Saya</th>
-                              <th colSpan="2" style={{ textAlign: 'left', color: 'var(--accent)' }}>Utang & Kekayaan Bersih</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            <tr>
-                              <td>Dompet / Kas Bebas</td>
-                              <td style={{ textAlign: 'right', fontWeight: '600' }}>{formatRupiah(Math.max(0, totalAssets - emergencyFund))}</td>
-                              <td>Utang / Cicilan / Paylater</td>
-                              <td style={{ textAlign: 'right', fontWeight: '600' }}>{formatRupiah(totalDebt)}</td>
-                            </tr>
-                            <tr>
-                              <td>Dana Cadangan</td>
-                              <td style={{ textAlign: 'right', fontWeight: '600' }}>{formatRupiah(emergencyFund)}</td>
-                              <td>Kekayaan Bersih</td>
-                              <td style={{ textAlign: 'right', fontWeight: '600' }}>{formatRupiah(netWorth)}</td>
-                            </tr>
-                            <tr style={{ fontWeight: '700', borderTop: '1.5px solid var(--border-color)', fontSize: '0.85rem' }}>
-                              <td>Total Aset Saya</td>
-                              <td style={{ textAlign: 'right', color: 'var(--primary)' }}>{formatRupiah(totalAssets)}</td>
-                              <td>Total Kewajiban & Kekayaan</td>
-                              <td style={{ textAlign: 'right', color: 'var(--primary)' }}>{formatRupiah(totalDebt + netWorth)}</td>
-                            </tr>
-                          </tbody>
-                        </table>
                       </div>
                       
                     </div>
@@ -2018,7 +2042,49 @@ ${evaluation}
                       </div>
                     </div>
 
-                    {/* 4. Unduh Laporan Button */}
+                    {/* 4. Savings Goal Milestones */}
+                    <div className="mizan-card" style={{ padding: '1.5rem', gap: '1rem' }}>
+                      <div className="mizan-card-title">
+                        <span style={{ fontSize: '1.1rem', fontWeight: 'bold' }}>🎯 Pencapaian Gol Keuangan</span>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Wishlist Impian</span>
+                      </div>
+                      
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%' }}>
+                        {targets.length === 0 ? (
+                          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center', fontStyle: 'italic', padding: '10px 0' }}>
+                            Belum ada target wishlist aktif. Tambahkan wishlist di tab Buku Kas.
+                          </div>
+                        ) : (
+                          targets.map(tg => {
+                            const percent = Math.min(100, Math.round((tg.current_amount / tg.target_amount) * 100));
+                            const advice = getWishlistAdvice(tg);
+                            return (
+                              <div key={tg.target_id} style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '10px 12px', border: '1px solid var(--border-color)', borderRadius: '8px', backgroundColor: 'var(--bg-secondary)' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem' }}>
+                                  <span style={{ fontWeight: '700' }}>🎁 {tg.title}</span>
+                                  <span style={{ fontWeight: 'bold', color: 'var(--primary)' }}>{percent}%</span>
+                                </div>
+                                
+                                <div style={{ height: '8px', width: '100%', backgroundColor: 'var(--bg-tertiary)', borderRadius: '4px', overflow: 'hidden', border: '1px solid var(--border-color)' }}>
+                                  <div style={{ height: '100%', width: `${percent}%`, backgroundColor: 'var(--primary)', transition: 'width 0.3s' }}></div>
+                                </div>
+                                
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                                  <span>{formatRupiah(tg.current_amount)} / {formatRupiah(tg.target_amount)}</span>
+                                  <span>Tenggat: {new Date(tg.deadline).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                                </div>
+                                
+                                <div style={{ fontSize: '0.7rem', color: advice.feasible ? 'var(--primary)' : 'var(--accent)', fontWeight: '600', borderTop: '1px dashed var(--border-color)', paddingTop: '4px', marginTop: '2px' }}>
+                                  💡 {advice.advice}
+                                </div>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                    </div>
+
+                    {/* 5. Unduh Laporan Button */}
                     <button 
                       onClick={handleDownloadReport} 
                       className="btn-primary" 
