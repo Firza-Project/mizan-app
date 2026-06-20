@@ -60,7 +60,7 @@ export default function MobileEmulator({ onActionLogged }) {
   
   // Trackers
   const [worshipTracker, setWorshipTracker] = useState({ subuh: false, dzuhur: false, ashar: false, maghrib: false, isya: false, sunnah: false, tilawah: 0 });
-  const [healthTracker, setHealthTracker] = useState({ water: 0, sleep_hours: 8, exercise: false, healthy_food: false, read_book: false, mood: '😐', steps: 0, meals: { breakfast: false, lunch: false, dinner: false } });
+  const [healthTracker, setHealthTracker] = useState({ water: 0, sleep_hours: '', exercise: false, healthy_food: false, read_book: false, mood: '😐', steps: 0, meals: { breakfast: false, lunch: false, dinner: false }, weekly_workouts: 0 });
 
   // Tasbih States
   const [tasbihCount, setTasbihCount] = useState(0);
@@ -74,6 +74,17 @@ export default function MobileEmulator({ onActionLogged }) {
   const [chatInput, setChatInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const chatEndRef = useRef(null);
+
+  // Movement Inspirations State
+  const [inspirationText, setInspirationText] = useState('');
+  const MOVEMENT_INSPIRATIONS = [
+    "Lagi bosan joging? Yuk coba stretching 15 menit aja biar badan seger!",
+    "Coba jalan santai keliling komplek sambil dengerin murattal atau podcast islami!",
+    "Lakukan push-up 10 kali dan squat 10 kali sebelum mandi sore!",
+    "Yoga/stretching ringan sebelum tidur malam biar tidur lebih lelap!",
+    "Yuk coba workout 15 menit dengan panduan video olahraga di rumah!",
+    "Bersepeda santai sore hari selama 20 menit untuk menyegarkan pikiran!"
+  ];
 
   // Random Daily Hadith
   const [haditsIndex] = useState(() => Math.floor(secureRandom() * HADITS_QUOTES.length));
@@ -167,13 +178,13 @@ export default function MobileEmulator({ onActionLogged }) {
     // AI and Mizan Scores
     const mizanScores = calculateMizanScore(userId);
     
-    // Adjust Health Score locally based on steps count and mood harian
+    // Adjust Health Score locally based on mood harian
     let adjustedHealth = mizanScores.health;
-    if (hLog.steps >= 10000) adjustedHealth = Math.min(100, adjustedHealth + 10);
-    else if (hLog.steps >= 5000) adjustedHealth = Math.min(100, adjustedHealth + 5);
-    
-    if (hLog.mood === '😴' || hLog.mood === '😰') adjustedHealth = Math.max(0, adjustedHealth - 5);
-    else if (hLog.mood === '😊') adjustedHealth = Math.min(100, adjustedHealth + 5);
+    if (hLog.mood === '😴' || hLog.mood === '😰' || hLog.mood === '🤒') {
+      adjustedHealth = Math.max(0, adjustedHealth - 5);
+    } else if (hLog.mood === '😊' || hLog.mood === '💪' || hLog.mood === '🤲') {
+      adjustedHealth = Math.min(100, adjustedHealth + 5);
+    }
 
     const finalMizanScore = Math.round((0.40 * mizanScores.financial) + (0.30 * mizanScores.worship) + (0.30 * adjustedHealth));
 
@@ -502,16 +513,6 @@ export default function MobileEmulator({ onActionLogged }) {
     if (onActionLogged) onActionLogged();
   };
 
-  const handleStepsChange = (stepsVal) => {
-    const todayStr = new Date().toISOString().split('T')[0];
-    const updated = { ...healthTracker, steps: parseInt(stepsVal || 0) };
-    db.health.save(currentUser.user_id, todayStr, updated);
-    setHealthTracker(updated);
-    
-    loadData();
-    if (onActionLogged) onActionLogged();
-  };
-
   const handleMoodSelect = (moodEmoji) => {
     const todayStr = new Date().toISOString().split('T')[0];
     const updated = { ...healthTracker, mood: moodEmoji };
@@ -531,6 +532,25 @@ export default function MobileEmulator({ onActionLogged }) {
     
     loadData();
     if (onActionLogged) onActionLogged();
+  };
+
+  const handleWeeklyWorkoutToggle = (num) => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    let newVal = num;
+    if (healthTracker.weekly_workouts === num) {
+      newVal = num - 1;
+    }
+    const updated = { ...healthTracker, weekly_workouts: newVal };
+    db.health.save(currentUser.user_id, todayStr, updated);
+    setHealthTracker(updated);
+    
+    loadData();
+    if (onActionLogged) onActionLogged();
+  };
+
+  const showRandomInspiration = () => {
+    const idx = Math.floor(secureRandom() * MOVEMENT_INSPIRATIONS.length);
+    setInspirationText(MOVEMENT_INSPIRATIONS[idx]);
   };
 
   // Wishlist / Targets Handlers
@@ -1867,54 +1887,40 @@ export default function MobileEmulator({ onActionLogged }) {
                 </div>
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Mempengaruhi Mizan Score Anda</span>
                 
-                <div style={{ display: 'flex', justifyContent: 'space-around', fontSize: '2rem', padding: '0.5rem 0' }}>
-                  {['😊', '😐', '😴', '😢', '😰'].map(emoji => (
-                    <button 
-                      key={emoji}
-                      onClick={() => handleMoodSelect(emoji)}
-                      style={{
-                        background: healthTracker.mood === emoji ? 'var(--primary-light)' : 'transparent',
-                        border: healthTracker.mood === emoji ? '2px solid var(--primary)' : '2px solid transparent',
-                        borderRadius: '12px',
-                        cursor: 'pointer',
-                        padding: '6px 12px',
-                        fontSize: '2rem',
-                        transition: 'all 0.2s'
-                      }}
-                      title={emoji === '😊' ? 'Senang' : emoji === '😐' ? 'Tenang' : emoji === '😴' ? 'Lelah' : emoji === '😢' ? 'Sedih' : 'Cemas'}
-                    >
-                      {emoji}
-                    </button>
-                  ))}
+                <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', fontSize: '2rem', padding: '0.5rem 0' }}>
+                  {['😊', '😐', '😴', '😢', '😰', '💪', '🤲', '🤒'].map(emoji => {
+                    const moodLabels = {
+                      '😊': 'Senang',
+                      '😐': 'Tenang',
+                      '😴': 'Lelah',
+                      '😢': 'Sedih',
+                      '😰': 'Cemas',
+                      '💪': 'Semangat',
+                      '🤲': 'Bersyukur',
+                      '🤒': 'Sakit'
+                    };
+                    return (
+                      <button 
+                        key={emoji}
+                        type="button"
+                        onClick={() => handleMoodSelect(emoji)}
+                        style={{
+                          background: healthTracker.mood === emoji ? 'var(--primary-light)' : 'transparent',
+                          border: healthTracker.mood === emoji ? '2px solid var(--primary)' : '2px solid transparent',
+                          borderRadius: '12px',
+                          cursor: 'pointer',
+                          padding: '6px 10px',
+                          fontSize: '1.8rem',
+                          flex: '1 0 20%',
+                          transition: 'all 0.2s'
+                        }}
+                        title={moodLabels[emoji] || ''}
+                      >
+                        {emoji}
+                      </button>
+                    );
+                  })}
                 </div>
-              </div>
-
-              {/* Steps Counter logger (New Feature) */}
-              <div className="mizan-card" style={{ padding: '1.5rem', gap: '0.8rem', alignSelf: 'start' }}>
-                <div className="mizan-card-title" style={{ fontSize: '1.1rem', fontWeight: 'bold' }}>
-                  🚶‍♂️ Pelacak Langkah Kaki
-                </div>
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Target Ideal: 5.000+ Langkah</span>
-                
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: '0.5rem 0' }}>
-                  <input 
-                    type="number" 
-                    placeholder="Langkah"
-                    value={healthTracker.steps || ''}
-                    onChange={(e) => handleStepsChange(e.target.value)}
-                    className="form-control"
-                    style={{ flex: 1, padding: '6px', fontSize: '0.85rem' }}
-                  />
-                  <span style={{ fontSize: '0.85rem', fontWeight: '600' }}>Langkah</span>
-                </div>
-                
-                {healthTracker.steps >= 10000 ? (
-                  <span style={{ fontSize: '0.75rem', color: 'var(--primary)', fontWeight: '600' }}>🏆 MasyaAllah! Target 10.000 Langkah Tercapai! (+10 Mizan Score)</span>
-                ) : healthTracker.steps >= 5000 ? (
-                  <span style={{ fontSize: '0.75rem', color: 'var(--primary)', fontWeight: '600' }}>👍 Luar biasa! Target minimal 5.000 langkah tercapai. (+5 Mizan Score)</span>
-                ) : (
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Terus melangkah untuk hidup seimbang.</span>
-                )}
               </div>
 
               {/* Meal log Tracker checklists (New Feature) */}
@@ -1995,7 +2001,8 @@ export default function MobileEmulator({ onActionLogged }) {
                       step="0.5" 
                       min="0" 
                       max="24"
-                      value={healthTracker.sleep_hours} 
+                      placeholder="--"
+                      value={healthTracker.sleep_hours === null || healthTracker.sleep_hours === undefined ? '' : healthTracker.sleep_hours} 
                       onChange={(e) => handleSleepChange(e.target.value)}
                       className="form-control"
                       style={{ width: '70px', padding: '4px 8px', fontSize: '0.85rem', textAlign: 'center' }}
@@ -2003,13 +2010,19 @@ export default function MobileEmulator({ onActionLogged }) {
                     <span>Jam</span>
                   </div>
                 </div>
-                {healthTracker.sleep_hours < 7 ? (
-                  <div style={{ fontSize: '0.8rem', color: 'var(--accent)', fontWeight: '600', backgroundColor: 'var(--accent-light)', padding: '8px', borderRadius: '6px' }}>
-                    ⚠️ Durasi tidur Anda di bawah target minimal 7 jam. Hindari begadang malam ini untuk menjaga stabilitas mental dan fisik!
-                  </div>
+                {healthTracker.sleep_hours !== '' && healthTracker.sleep_hours !== null && healthTracker.sleep_hours !== undefined ? (
+                  parseFloat(healthTracker.sleep_hours) < 7 ? (
+                    <div style={{ fontSize: '0.8rem', color: 'var(--accent)', fontWeight: '600', backgroundColor: 'var(--accent-light)', padding: '8px', borderRadius: '6px' }}>
+                      ⚠️ Durasi tidur Anda di bawah target minimal 7 jam. Hindari begadang malam ini untuk menjaga stabilitas mental dan fisik!
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: '0.8rem', color: 'var(--primary)', fontWeight: '600', backgroundColor: 'var(--primary-light)', padding: '8px', borderRadius: '6px' }}>
+                      ✅ Istirahat Anda tercukupi dengan baik. Pertahankan pola tidur sehat ini!
+                    </div>
+                  )
                 ) : (
-                  <div style={{ fontSize: '0.8rem', color: 'var(--primary)', fontWeight: '600', backgroundColor: 'var(--primary-light)', padding: '8px', borderRadius: '6px' }}>
-                    ✅ Istirahat Anda tercukupi dengan baik. Pertahankan pola tidur sehat ini!
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic', backgroundColor: 'var(--bg-primary)', padding: '8px', borderRadius: '6px', textAlign: 'center' }}>
+                    Silakan isi durasi tidur Anda untuk melihat analisis istirahat harian.
                   </div>
                 )}
               </div>
@@ -2019,20 +2032,32 @@ export default function MobileEmulator({ onActionLogged }) {
                 <div className="mizan-card-title" style={{ fontSize: '1.1rem', fontWeight: 'bold' }}>Pelacak Kebiasaan Sehat</div>
                 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '0.9rem', marginTop: '4px' }}>
+                  {/* Visual Checkbox Mingguan (Weekly Workouts Tracker) */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', margin: '4px 0', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
+                    <span style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-secondary)' }}>🏋️‍♂️ Target Olahraga Mingguan (Goal: 4x Seminggu):</span>
+                    <div style={{ display: 'flex', gap: '14px', fontSize: '2rem', margin: '4px 0' }}>
+                      {[1, 2, 3, 4].map(num => (
+                        <span
+                          key={num}
+                          onClick={() => handleWeeklyWorkoutToggle(num)}
+                          style={{ cursor: 'pointer', transition: 'transform 0.1s active', transform: 'scale(1)' }}
+                          title={`Klik untuk mencatat olahraga ke-${num}`}
+                        >
+                          {healthTracker.weekly_workouts >= num ? '🟢' : '⚪'}
+                        </span>
+                      ))}
+                    </div>
+                    <span style={{ fontSize: '0.75rem', color: healthTracker.weekly_workouts >= 4 ? 'var(--primary)' : 'var(--text-muted)', fontWeight: healthTracker.weekly_workouts >= 4 ? 'bold' : 'normal' }}>
+                      {healthTracker.weekly_workouts >= 4 
+                        ? '🎉 Keren! Target olahraga mingguan tercapai!' 
+                        : `Selesaikan olahraga pilihanmu (joging, sepedaan, workout, stretching) lalu klaim progress.`}
+                    </span>
+                  </div>
+
                   <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
                     <input 
                       type="checkbox" 
-                      checked={healthTracker.exercise} 
-                      onChange={() => toggleHealthHabit('exercise')}
-                      style={{ width: '18px', height: '18px', accentColor: 'var(--primary)' }}
-                    />
-                    <span>🏃‍♂️ Berolahraga Harian (Minimal 15 menit)</span>
-                  </label>
-                  
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
-                    <input 
-                      type="checkbox" 
-                      checked={healthTracker.healthy_food} 
+                      checked={healthTracker.healthy_food || false} 
                       onChange={() => toggleHealthHabit('healthy_food')}
                       style={{ width: '18px', height: '18px', accentColor: 'var(--primary)' }}
                     />
@@ -2042,12 +2067,29 @@ export default function MobileEmulator({ onActionLogged }) {
                   <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
                     <input 
                       type="checkbox" 
-                      checked={healthTracker.read_book} 
+                      checked={healthTracker.read_book || false} 
                       onChange={() => toggleHealthHabit('read_book')}
                       style={{ width: '18px', height: '18px', accentColor: 'var(--primary)' }}
                     />
                     <span>📚 Membaca Buku / Belajar Mandiri (non-kuliah)</span>
                   </label>
+
+                  {/* Inspirasi Gerak Hari Ini */}
+                  <div style={{ marginTop: '4px', paddingTop: '12px', borderTop: '1px solid var(--border-color)' }}>
+                    <button 
+                      type="button" 
+                      onClick={showRandomInspiration} 
+                      className="btn-primary" 
+                      style={{ width: '100%', padding: '8px 12px', fontSize: '0.8rem', background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', boxShadow: 'none' }}
+                    >
+                      💡 Inspirasi Gerak Hari Ini
+                    </button>
+                    {inspirationText && (
+                      <div className="fade-in" style={{ marginTop: '10px', padding: '10px', borderRadius: '8px', background: 'var(--primary-light)', color: 'var(--text-primary)', fontSize: '0.8rem', borderLeft: '4px solid var(--primary)', lineHeight: '1.4' }}>
+                        {inspirationText}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 

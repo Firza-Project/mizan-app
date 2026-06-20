@@ -535,19 +535,23 @@ export const calculateMizanScore = (userId) => {
     // Water (target 8 glasses * 5 points = 40 points)
     dayScore += Math.min(40, h.water * 5);
     
-    // Sleep (target 7 hours = 30 points, deduct if less than 6 hours)
-    if (h.sleep_hours >= 7) {
-      dayScore += 30;
-    } else if (h.sleep_hours >= 6) {
-      dayScore += 20;
-    } else {
-      dayScore += 10;
+    // Sleep (target 7 hours = 30 points, only if entered)
+    if (h.sleep_hours !== '' && h.sleep_hours !== null && h.sleep_hours !== undefined) {
+      if (h.sleep_hours >= 7) {
+        dayScore += 30;
+      } else if (h.sleep_hours >= 6) {
+        dayScore += 20;
+      } else {
+        dayScore += 10;
+      }
     }
     
-    // Healthy habits checklist (exercise + healthy_food + read_book = 3 items * 10 points = 30 points)
-    if (h.exercise) dayScore += 10;
-    if (h.healthy_food) dayScore += 10;
-    if (h.read_book) dayScore += 10;
+    // Weekly Workouts (up to 20 points: 5 points per workout completed, max 4)
+    dayScore += Math.min(20, (h.weekly_workouts || 0) * 5);
+    
+    // Healthy habits checklist (healthy_food + read_book = 2 items * 5 points = 10 points)
+    if (h.healthy_food) dayScore += 5;
+    if (h.read_book) dayScore += 5;
     
     healthSum += dayScore;
   });

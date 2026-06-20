@@ -480,13 +480,14 @@ export const db = {
         user_id: userId,
         date,
         water: 0,
-        sleep_hours: 8,
+        sleep_hours: '',
         exercise: false,
         healthy_food: false,
         read_book: false,
         mood: '😐',
         steps: 0,
         meals: { breakfast: false, lunch: false, dinner: false },
+        weekly_workouts: 0,
         hasData: false
       };
     },
@@ -497,13 +498,14 @@ export const db = {
         user_id: userId,
         date,
         water: parseInt(data.water || 0),
-        sleep_hours: parseFloat(data.sleep_hours || 8),
+        sleep_hours: data.sleep_hours === '' ? '' : parseFloat(data.sleep_hours || 0),
         exercise: data.exercise || false,
         healthy_food: data.healthy_food || false,
         read_book: data.read_book || false,
         mood: data.mood || '😐',
         steps: parseInt(data.steps || 0),
         meals: data.meals || { breakfast: false, lunch: false, dinner: false },
+        weekly_workouts: parseInt(data.weekly_workouts || 0),
         hasData: true
       };
       if (idx !== -1) {
@@ -518,7 +520,7 @@ export const db = {
         user_id: userId,
         date,
         water: updated.water,
-        sleep_hours: updated.sleep_hours,
+        sleep_hours: updated.sleep_hours === '' ? null : updated.sleep_hours,
         exercise: updated.exercise,
         healthy_food: updated.healthy_food,
         read_book: updated.read_book
