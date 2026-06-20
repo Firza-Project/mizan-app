@@ -959,27 +959,27 @@ export default function MobileEmulator({ onActionLogged }) {
 
   // Reusable Balance Card Component
   const renderBalanceCard = () => (
-    <div className="mizan-card" style={{ borderColor: 'var(--primary)', background: 'linear-gradient(135deg, var(--bg-secondary) 0%, var(--primary-light) 100%)', padding: '1.2rem', gap: '0.8rem', width: '100%' }}>
+    <div className="mizan-card" style={{ borderColor: 'var(--primary)', background: 'linear-gradient(135deg, var(--bg-secondary) 0%, var(--primary-light) 100%)', padding: isMobile ? '1rem' : '1.2rem', gap: '0.8rem', width: '100%' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <span style={{ fontSize: '0.9rem', fontWeight: '700', color: 'var(--text-secondary)' }}>💰 Ringkasan Saldo Kas</span>
         <span style={{ fontSize: '1.1rem' }}>💸</span>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginTop: '4px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: isMobile ? '6px' : '12px', marginTop: '4px' }}>
         <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Saldo Bebas</span>
-          <span style={{ fontSize: '1.1rem', fontWeight: 'bold', color: 'var(--primary)' }}>
+          <span style={{ fontSize: isMobile ? '0.62rem' : '0.7rem', color: 'var(--text-muted)' }}>Saldo Bebas</span>
+          <span style={{ fontSize: isMobile ? '0.92rem' : '1.1rem', fontWeight: 'bold', color: 'var(--primary)' }}>
             {formatRupiah(Math.max(0, finReportData.cash - emergencyFund))}
           </span>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Dana Cadangan</span>
-          <span style={{ fontSize: '1.1rem', fontWeight: 'bold', color: 'var(--accent)' }}>
+          <span style={{ fontSize: isMobile ? '0.62rem' : '0.7rem', color: 'var(--text-muted)' }}>Dana Cadangan</span>
+          <span style={{ fontSize: isMobile ? '0.92rem' : '1.1rem', fontWeight: 'bold', color: 'var(--accent)' }}>
             {formatRupiah(emergencyFund)}
           </span>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Total Saldo Asli</span>
-          <span style={{ fontSize: '1.1rem', fontWeight: 'bold', color: 'var(--text-primary)' }}>
+          <span style={{ fontSize: isMobile ? '0.62rem' : '0.7rem', color: 'var(--text-muted)' }}>Total Saldo Asli</span>
+          <span style={{ fontSize: isMobile ? '0.92rem' : '1.1rem', fontWeight: 'bold', color: 'var(--text-primary)' }}>
             {formatRupiah(finReportData.cash)}
           </span>
         </div>

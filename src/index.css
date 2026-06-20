@@ -1047,5 +1047,11 @@ svg.mizan-svg-chart {
   .finance-grid {
     grid-template-columns: 1fr !important;
   }
+  .main-content-layout {
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+    padding-top: 1rem !important;
+    gap: 0.8rem !important;
+  }
 }
 
