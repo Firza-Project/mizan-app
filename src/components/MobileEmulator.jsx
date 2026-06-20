@@ -69,7 +69,7 @@ export default function MobileEmulator({ onActionLogged }) {
 
   // Chat AI States
   const [chatMessages, setChatMessages] = useState([
-    { sender: 'bot', text: 'Assalamu\'alaikum! Saya Mizan AI. Tanyakan apa saja mengenai kondisi finansial, sisa saldo, prediksi israf, kewajiban bulanan, target wishlist impian, atau kondisi kesehatan Anda hari ini.' }
+    { id: 'msg-init', sender: 'bot', text: 'Assalamu\'alaikum! Saya Mizan AI. Tanyakan apa saja mengenai kondisi finansial, sisa saldo, prediksi israf, kewajiban bulanan, target wishlist impian, atau kondisi kesehatan Anda hari ini.' }
   ]);
   const [chatInput, setChatInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -279,7 +279,7 @@ export default function MobileEmulator({ onActionLogged }) {
     setIsEditing(false);
     setEditingTxId(null);
     setChatMessages([
-      { sender: 'bot', text: 'Assalamu\'alaikum! Saya Mizan AI. Tanyakan apa saja mengenai kondisi finansial, sisa saldo, prediksi israf, kewajiban bulanan, target wishlist impian, atau kondisi kesehatan Anda hari ini.' }
+      { id: 'msg-init', sender: 'bot', text: 'Assalamu\'alaikum! Saya Mizan AI. Tanyakan apa saja mengenai kondisi finansial, sisa saldo, prediksi israf, kewajiban bulanan, target wishlist impian, atau kondisi kesehatan Anda hari ini.' }
     ]);
     showToast('success', 'Anda telah keluar.');
     if (onActionLogged) onActionLogged();
@@ -588,7 +588,7 @@ export default function MobileEmulator({ onActionLogged }) {
     if (!chatInput.trim()) return;
 
     const userMsg = chatInput.trim();
-    setChatMessages(prev => [...prev, { sender: 'user', text: userMsg }]);
+    setChatMessages(prev => [...prev, { id: `msg-${Date.now()}-${secureRandom()}`, sender: 'user', text: userMsg }]);
     setChatInput('');
     setIsTyping(true);
 
@@ -653,7 +653,7 @@ export default function MobileEmulator({ onActionLogged }) {
           "5. *'Skor ibadah dan kesehatan harian'*\n\nAda yang ingin Anda tanyakan?";
       }
 
-      setChatMessages(prev => [...prev, { sender: 'bot', text: botResponse }]);
+      setChatMessages(prev => [...prev, { id: `msg-${Date.now()}-${secureRandom()}`, sender: 'bot', text: botResponse }]);
       setIsTyping(false);
     }, 800);
   };
@@ -1174,7 +1174,7 @@ export default function MobileEmulator({ onActionLogged }) {
                 <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', textAlign: 'center', marginTop: '6px' }}>
                   Selanjutnya: <b>{nextPrayerVal.nextPrayerName} ({nextPrayerVal.nextPrayerTime})</b>
                   <div style={{ fontSize: '0.85rem', color: 'var(--accent)', fontWeight: '700', marginTop: '4px' }}>
-                    ⌛ Hitung Mundur: -{nextPrayerVal.countdown}
+                    ⌛ Hitung Mundur: {nextPrayerVal.countdown}
                   </div>
                 </div>
               </div>
@@ -1188,8 +1188,8 @@ export default function MobileEmulator({ onActionLogged }) {
                 
                 {/* Chat History scroll box */}
                 <div className="chat-history" style={{ height: '200px', overflowY: 'auto', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px', background: 'var(--bg-primary)' }}>
-                  {chatMessages.map((msg, i) => (
-                    <div key={i} className={`chat-message ${msg.sender}`} style={{
+                  {chatMessages.map((msg) => (
+                    <div key={msg.id} className={`chat-message ${msg.sender}`} style={{
                       alignSelf: msg.sender === 'user' ? 'flex-end' : 'flex-start',
                       backgroundColor: msg.sender === 'user' ? 'var(--primary-light)' : 'var(--bg-secondary)',
                       border: '1px solid var(--border-color)',
@@ -1653,8 +1653,8 @@ export default function MobileEmulator({ onActionLogged }) {
                         </tr>
                       </thead>
                       <tbody>
-                        {getGeneralJournal().map((entry, idx) => (
-                          <tr key={entry.id || idx} className={entry.account.startsWith('Kredit:') ? 'credit-row' : ''}>
+                        {getGeneralJournal().map((entry) => (
+                          <tr key={entry.id} className={entry.account.startsWith('Kredit:') ? 'credit-row' : ''}>
                             <td style={{ color: 'var(--text-muted)', fontSize: '0.75rem', verticalAlign: 'top', padding: '10px' }}>
                               {entry.account.startsWith('Debit:') ? entry.date : ''}
                             </td>

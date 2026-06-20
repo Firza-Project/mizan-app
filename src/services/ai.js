@@ -107,7 +107,15 @@ export const calculateHealthScore = (userId) => {
   const transactions = db.transactions.list(userId);
   const budgetPlan = db.budgets.get(userId);
 
-  if (!budgetPlan) return { score: 100, status: 'SEHAT', breakdown: {} };
+  if (transactions.length === 0) {
+    return { score: 0, status: 'PERLU_SELARAS', breakdown: { savings: 0, compliance: 0, israf: 0 } };
+  }
+
+  const activeBudget = budgetPlan || {
+    monthly_budget: 2000000,
+    allocation_ratio: { dharuriyat: 50, hajiyat: 20, tahsiniyat: 10, saving: 20 },
+    limit_alert: 600000
+  };
 
   const {
     incomeReference,
@@ -117,7 +125,7 @@ export const calculateHealthScore = (userId) => {
     sedekahSpend,
     savingsPercent,
     savings
-  } = calculateFinancials(userId, transactions, budgetPlan);
+  } = calculateFinancials(userId, transactions, activeBudget);
 
   // Component A: Savings Percent (ideal target >= 20%)
   const componentA = Math.min(100, (savingsPercent / 20) * 100);
@@ -148,7 +156,7 @@ export const calculateHealthScore = (userId) => {
 
   // Component C: Israf Score
   // Calculation: Start with 100. Deduct points for weekly overspending
-  const weeklyTahsiniyatLimit = (budgetPlan.monthly_budget * 0.30) / 4;
+  const weeklyTahsiniyatLimit = (activeBudget.monthly_budget * 0.30) / 4;
   
   // Group Tahsiniyat spends by week of the month
   const now = new Date();
@@ -480,6 +488,7 @@ export const calculateMizanScore = (userId) => {
 
   // 2. Get Worship Score (average of the last 7 days)
   let worshipSum = 0;
+  let worshipLoggedDays = 0;
   const dates = [];
   const now = new Date();
   
@@ -492,6 +501,8 @@ export const calculateMizanScore = (userId) => {
 
   dates.forEach(date => {
     const w = db.worship.get(userId, date);
+    if (!w.hasData) return;
+    worshipLoggedDays++;
     let dayScore = 0;
     
     // Check checklist shalat wajib (5 shalat * 15 points = 75 points)
@@ -510,12 +521,15 @@ export const calculateMizanScore = (userId) => {
     worshipSum += dayScore;
   });
   
-  const worshipScore = Math.round(worshipSum / 7);
+  const worshipScore = worshipLoggedDays > 0 ? Math.round(worshipSum / worshipLoggedDays) : 0;
 
   // 3. Get Health Score (average of the last 7 days)
   let healthSum = 0;
+  let healthLoggedDays = 0;
   dates.forEach(date => {
     const h = db.health.get(userId, date);
+    if (!h.hasData) return;
+    healthLoggedDays++;
     let dayScore = 0;
     
     // Water (target 8 glasses * 5 points = 40 points)
@@ -538,7 +552,7 @@ export const calculateMizanScore = (userId) => {
     healthSum += dayScore;
   });
   
-  const healthScore = Math.round(healthSum / 7);
+  const healthScore = healthLoggedDays > 0 ? Math.round(healthSum / healthLoggedDays) : 0;
 
   // 4. Calculate Unified Mizan Score
   // Formula: 40% Finance + 30% Worship + 30% Health
