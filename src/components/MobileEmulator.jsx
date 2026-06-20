@@ -112,6 +112,7 @@ export default function MobileEmulator({ onActionLogged }) {
 
   // Feedback toast
   const [toast, setToast] = useState(null);
+  const [hoveredExpenseIdx, setHoveredExpenseIdx] = useState(null);
   // Helper calculation for next prayer
   const getNextPrayerInfo = () => {
     const schedule = PRAYER_SCHEDULES[city] || PRAYER_SCHEDULES.Jakarta;
@@ -407,6 +408,120 @@ export default function MobileEmulator({ onActionLogged }) {
       loadData();
       showToast('success', 'Transaksi dihapus.');
     }
+  };
+
+  const handleDownloadReport = () => {
+    const today = new Date();
+    const dateString = today.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+    
+    const cashValue = finReportData.cash;
+    const assets = cashValue;
+    const debt = unpaidObligationsAmount;
+    const netWorthVal = assets - debt;
+    
+    let evaluation = "EVALUASI AI KESEHATAN FINANSIAL MIZAN:\n";
+    evaluation += "=========================================\n";
+    
+    const savingsPercent = finReportData.totalRevenues > 0 
+      ? ((finReportData.totalRevenues - finReportData.totalExpenses) / finReportData.totalRevenues) * 100 
+      : 0;
+      
+    if (finReportData.totalRevenues === 0) {
+      evaluation += "• Belum ada pemasukan yang tercatat bulan ini. Silakan catat uang saku/gaji Anda.\n";
+    } else {
+      if (savingsPercent >= 20) {
+        evaluation += `• Tingkat tabungan Anda sangat baik: ${savingsPercent.toFixed(1)}% (Target ideal: >= 20%). Pertahankan konsistensi ini untuk mengamankan masa depan Anda.\n`;
+      } else {
+        evaluation += `• Tingkat tabungan Anda cukup rendah: ${savingsPercent.toFixed(1)}% (Di bawah target ideal 20%). Cobalah untuk menekan pos pengeluaran sekunder/tersier.\n`;
+      }
+    }
+    
+    if (debt > 0) {
+      const debtRatio = (debt / assets) * 100;
+      if (debtRatio > 30) {
+        evaluation += `• Peringatan Utang Tinggi: Utang/Paylater Anda sebesar ${formatRupiah(debt)} mencapai ${debtRatio.toFixed(1)}% dari total aset Anda. Batasi transaksi kredit baru!\n`;
+      } else {
+        evaluation += `• Rasio utang terhadap aset Anda aman (${debtRatio.toFixed(1)}%). Pastikan untuk melunasi cicilan tepat waktu sebelum jatuh tempo.\n`;
+      }
+    } else {
+      evaluation += "• Luar biasa! Anda tidak memiliki utang atau cicilan aktif bulan ini. Kekayaan Bersih Anda dalam kondisi prima.\n";
+    }
+    
+    let tahsiniyatTotal = 0;
+    Object.entries(finReportData.expenses).forEach(([key, val]) => {
+      const mapping = classifyTransaction(key);
+      if (mapping.priority_tag === 'Tahsiniyat') {
+        tahsiniyatTotal += val;
+      }
+    });
+    
+    if (finReportData.totalExpenses > 0) {
+      const tahsiniyatRatio = (tahsiniyatTotal / finReportData.totalExpenses) * 100;
+      if (tahsiniyatRatio > 40) {
+        evaluation += `• Peringatan Israf: Pengeluaran untuk Gaya Hidup / Tersier (Tahsiniyat) mencapai ${tahsiniyatRatio.toFixed(1)}% dari total pengeluaran. Batasi kebiasaan nongkrong & jajan.\n`;
+      }
+    }
+
+    const categoryItems = Object.entries(finReportData.expenses).map(([key, val]) => ({
+      key,
+      value: val,
+      label: CATEGORY_TO_SYARIAH_MAP[key]?.label || key,
+      pct: (val / (finReportData.totalExpenses || 1)) * 100
+    }));
+
+    const reportContent = `
+=========================================
+      LAPORAN KEUANGAN PRIBADI MIZAN
+=========================================
+Tanggal Ekspor : ${dateString}
+Pengguna       : ${currentUser.username}
+
+1. RINGKASAN ARUS KAS (CASH FLOW)
+-----------------------------------------
+Total Pemasukan   : ${formatRupiah(finReportData.totalRevenues)}
+Total Pengeluaran  : -${formatRupiah(finReportData.totalExpenses)}
+-----------------------------------------
+Surplus/Sisa Uang : ${formatRupiah(finReportData.netProfit)}
+
+2. NERACA KEKAYAAN BERSIH
+-----------------------------------------
+SISI KIRI (Aset Saya):
+  - Dompet / Kas Bebas : ${formatRupiah(Math.max(0, cashValue - emergencyFund))}
+  - Dana Cadangan      : ${formatRupiah(emergencyFund)}
+  * Total Aset Saya    : ${formatRupiah(assets)}
+
+SISI KANAN (Kewajiban & Kekayaan):
+  - Utang / Cicilan    : ${formatRupiah(debt)}
+  - Kekayaan Bersih    : ${formatRupiah(netWorthVal)}
+  * Total Sisi Kanan   : ${formatRupiah(debt + netWorthVal)}
+
+Status Neraca: SEIMBANG (Balanced)
+
+3. RINCIAN PENGELUARAN KATEGORI
+-----------------------------------------
+${categoryItems.map(cat => {
+  return `  - ${cat.label.padEnd(25)} : ${formatRupiah(cat.value)} (${cat.pct.toFixed(1)}%) [${classifyTransaction(cat.key).priority_tag}]`;
+}).join('\n')}
+
+-----------------------------------------
+4. EVALUASI DAN REKOMENDASI AI MIZAN
+-----------------------------------------
+${evaluation}
+=========================================
+    Pertahankan Keseimbangan Hidup Anda!
+=========================================
+`;
+
+    const blob = new Blob([reportContent], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `Laporan_Keuangan_Mizan_${new Date().toISOString().split('T')[0]}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    showToast('success', 'Laporan keuangan berhasil diunduh!');
   };
 
   // Obligations Handlers
@@ -1698,63 +1813,233 @@ export default function MobileEmulator({ onActionLogged }) {
               )}
 
               {/* Sub tab content: LAPORAN */}
-              {financeSubTab === 'laporan' && (
-                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '1.5rem', alignItems: 'start' }}>
-                  
-                  {/* Neraca Sederhana */}
-                  <div className="mizan-card" style={{ padding: '1.5rem', gap: '0.8rem' }}>
-                    <div className="mizan-card-title" style={{ fontSize: '1.1rem', fontWeight: 'bold' }}>Neraca Sederhana (Balance Sheet)</div>
-                    <table className="accounting-table">
-                      <thead>
-                        <tr>
-                          <th colSpan="2">Aset (Aktiva)</th>
-                          <th colSpan="2">Ekuitas (Pasiva)</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr>
-                          <td>Kas Bebas</td>
-                          <td style={{ textAlign: 'right', fontWeight: '600' }}>{formatRupiah(Math.max(0, finReportData.cash - emergencyFund))}</td>
-                          <td>Modal Disetor</td>
-                          <td style={{ textAlign: 'right', fontWeight: '600' }}>{formatRupiah(2000000)}</td>
-                        </tr>
-                        <tr>
-                          <td>Dana Cadangan</td>
-                          <td style={{ textAlign: 'right', fontWeight: '600' }}>{formatRupiah(emergencyFund)}</td>
-                          <td>Laba Ditahan</td>
-                          <td style={{ textAlign: 'right', fontWeight: '600' }}>{formatRupiah(finReportData.netProfit)}</td>
-                        </tr>
-                        <tr style={{ fontWeight: '700', borderTop: '2px solid var(--border-color)', fontSize: '0.9rem' }}>
-                          <td>Total Aset</td>
-                          <td style={{ textAlign: 'right', color: 'var(--primary)' }}>{formatRupiah(finReportData.cash)}</td>
-                          <td>Total Pasiva</td>
-                          <td style={{ textAlign: 'right', color: 'var(--primary)' }}>{formatRupiah(2000000 + finReportData.netProfit)}</td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
+              {financeSubTab === 'laporan' && (() => {
+                const totalAssets = finReportData.cash;
+                const totalDebt = unpaidObligationsAmount;
+                const netWorth = totalAssets - totalDebt;
 
-                  {/* Laporan Laba Rugi */}
-                  <div className="mizan-card" style={{ padding: '1.5rem', gap: '1rem' }}>
-                    <div className="mizan-card-title" style={{ fontSize: '1.1rem', fontWeight: 'bold' }}>Laporan Laba Rugi</div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.85rem' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: '600', borderBottom: '1px solid var(--border-color)', paddingBottom: '6px' }}>
-                        <span>Total Pendapatan (Revenues)</span>
-                        <span style={{ color: 'var(--primary)' }}>{formatRupiah(finReportData.totalRevenues)}</span>
+                const totalExp = finReportData.totalExpenses;
+                const categoryItems = Object.entries(finReportData.expenses).map(([key, value]) => {
+                  const pct = totalExp > 0 ? (value / totalExp) * 100 : 0;
+                  const label = CATEGORY_TO_SYARIAH_MAP[key]?.label || key;
+                  return { key, label, value, pct };
+                }).sort((a, b) => b.value - a.value);
+
+                let tempSum = 0;
+                const accumulatedPercentBefore = categoryItems.map(item => {
+                  const current = tempSum;
+                  tempSum += item.pct;
+                  return current;
+                });
+                const donutCircumference = 251.327; // 2 * Math.PI * 40
+                const CHART_COLORS = [
+                  '#8fa088', // Sage green
+                  '#dca084', // Terracotta
+                  '#e5c088', // Ochre gold
+                  '#70685c', // Warm slate
+                  '#a39889', // Sand dust
+                  '#6b7f67', // Darker sage
+                  '#c58c73', // Darker terracotta
+                  '#ceab70', // Darker gold
+                  '#5c5346', // Muted brown
+                  '#889ca0', // Soft blue-grey
+                ];
+
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', width: '100%' }}>
+                    
+                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '1.5rem', alignItems: 'start' }}>
+                      
+                      {/* 1. Cash Flow Summary */}
+                      <div className="mizan-card" style={{ padding: '1.5rem', gap: '1rem' }}>
+                        <div className="mizan-card-title">
+                          <span style={{ fontSize: '1.1rem', fontWeight: 'bold' }}>📈 Ringkasan Arus Kas</span>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Bulan Ini</span>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '0.85rem' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: '600', borderBottom: '1px solid var(--border-color)', paddingBottom: '8px' }}>
+                            <span>Total Pemasukan</span>
+                            <span style={{ color: 'var(--primary)', fontWeight: 'bold' }}>{formatRupiah(finReportData.totalRevenues)}</span>
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: '600', borderBottom: '1px solid var(--border-color)', paddingBottom: '8px' }}>
+                            <span>Total Pengeluaran</span>
+                            <span style={{ color: 'var(--accent)', fontWeight: 'bold' }}>-{formatRupiah(finReportData.totalExpenses)}</span>
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: '700', fontSize: '1rem', paddingTop: '6px', color: finReportData.netProfit >= 0 ? 'var(--primary)' : 'var(--accent)' }}>
+                            <span>Surplus / Sisa Uang</span>
+                            <span style={{ borderBottom: '2px double currentColor', paddingBottom: '2px' }}>{formatRupiah(finReportData.netProfit)}</span>
+                          </div>
+                        </div>
                       </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: '600', borderBottom: '1px solid var(--border-color)', paddingBottom: '6px' }}>
-                        <span>Total Beban (Expenses)</span>
-                        <span style={{ color: 'var(--accent)' }}>-{formatRupiah(finReportData.totalExpenses)}</span>
+
+                      {/* 2. Balanced Net Worth Tracker */}
+                      <div className="mizan-card" style={{ padding: '1.5rem', gap: '0.8rem' }}>
+                        <div className="mizan-card-title">
+                          <span style={{ fontSize: '1.1rem', fontWeight: 'bold' }}>⚖️ Neraca Kekayaan Bersih</span>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--primary)', fontWeight: 'bold' }}>Balanced</span>
+                        </div>
+                        
+                        {/* Visual Timbangan Kekayaan Bersih */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', margin: '4px 0 8px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: 'var(--text-secondary)', fontWeight: '600' }}>
+                            <span>Kekayaan Bersih ({Math.round(totalAssets > 0 ? (netWorth / totalAssets) * 100 : 100)}%)</span>
+                            <span>Utang ({Math.round(totalAssets > 0 ? (totalDebt / totalAssets) * 100 : 0)}%)</span>
+                          </div>
+                          <div style={{ height: '8px', width: '100%', backgroundColor: 'var(--bg-tertiary)', borderRadius: '4px', overflow: 'hidden', display: 'flex', border: '1px solid var(--border-color)' }}>
+                            <div style={{ height: '100%', width: `${totalAssets > 0 ? Math.max(0, (netWorth / totalAssets) * 100) : 100}%`, backgroundColor: 'var(--primary)', transition: 'width 0.3s' }}></div>
+                            <div style={{ height: '100%', width: `${totalAssets > 0 ? Math.max(0, (totalDebt / totalAssets) * 100) : 0}%`, backgroundColor: 'var(--accent)', transition: 'width 0.3s' }}></div>
+                          </div>
+                        </div>
+
+                        <table className="accounting-table" style={{ fontSize: '0.8rem' }}>
+                          <thead>
+                            <tr>
+                              <th colSpan="2" style={{ textAlign: 'left', color: 'var(--primary)' }}>Aset Saya</th>
+                              <th colSpan="2" style={{ textAlign: 'left', color: 'var(--accent)' }}>Utang & Kekayaan Bersih</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td>Dompet / Kas Bebas</td>
+                              <td style={{ textAlign: 'right', fontWeight: '600' }}>{formatRupiah(Math.max(0, totalAssets - emergencyFund))}</td>
+                              <td>Utang / Cicilan / Paylater</td>
+                              <td style={{ textAlign: 'right', fontWeight: '600' }}>{formatRupiah(totalDebt)}</td>
+                            </tr>
+                            <tr>
+                              <td>Dana Cadangan</td>
+                              <td style={{ textAlign: 'right', fontWeight: '600' }}>{formatRupiah(emergencyFund)}</td>
+                              <td>Kekayaan Bersih</td>
+                              <td style={{ textAlign: 'right', fontWeight: '600' }}>{formatRupiah(netWorth)}</td>
+                            </tr>
+                            <tr style={{ fontWeight: '700', borderTop: '1.5px solid var(--border-color)', fontSize: '0.85rem' }}>
+                              <td>Total Aset Saya</td>
+                              <td style={{ textAlign: 'right', color: 'var(--primary)' }}>{formatRupiah(totalAssets)}</td>
+                              <td>Total Kewajiban & Kekayaan</td>
+                              <td style={{ textAlign: 'right', color: 'var(--primary)' }}>{formatRupiah(totalDebt + netWorth)}</td>
+                            </tr>
+                          </tbody>
+                        </table>
                       </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: '700', fontSize: '1rem', paddingTop: '4px', color: finReportData.netProfit >= 0 ? 'var(--primary)' : 'var(--accent)' }}>
-                        <span>Laba (Rugi) Bersih</span>
-                        <span>{formatRupiah(finReportData.netProfit)}</span>
+                      
+                    </div>
+
+                    {/* 3. Interactive Expense Pie (Donut) Chart */}
+                    <div className="mizan-card" style={{ padding: '1.5rem', gap: '1rem' }}>
+                      <div className="mizan-card-title">
+                        <span style={{ fontSize: '1.1rem', fontWeight: 'bold' }}>📊 Proporsi Pengeluaran Dinamis</span>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Interaktif</span>
+                      </div>
+
+                      <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '1.5rem', alignItems: 'center', justifyContent: 'space-around' }}>
+                        {/* Circle SVG */}
+                        <div style={{ position: 'relative', width: '130px', height: '130px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <svg width="130" height="130" viewBox="0 0 100 100" style={{ transform: 'rotate(-90deg)', width: '100%', height: '100%' }}>
+                            {categoryItems.length === 0 ? (
+                              <circle
+                                cx="50"
+                                cy="50"
+                                r="40"
+                                fill="transparent"
+                                stroke="var(--border-color)"
+                                strokeWidth="12"
+                              />
+                            ) : (
+                              categoryItems.map((cat, idx) => {
+                                const strokeDasharray = `${(cat.pct / 100) * donutCircumference} ${donutCircumference}`;
+                                const strokeDashoffset = donutCircumference - (accumulatedPercentBefore[idx] / 100) * donutCircumference;
+                                return (
+                                  <circle
+                                    key={cat.key}
+                                    cx="50"
+                                    cy="50"
+                                    r="40"
+                                    fill="transparent"
+                                    stroke={CHART_COLORS[idx % CHART_COLORS.length]}
+                                    strokeWidth={hoveredExpenseIdx === idx ? "15" : "12"}
+                                    strokeDasharray={strokeDasharray}
+                                    strokeDashoffset={strokeDashoffset}
+                                    style={{ cursor: 'pointer', transition: 'stroke-width 0.15s, opacity 0.15s', opacity: hoveredExpenseIdx === null || hoveredExpenseIdx === idx ? 1 : 0.6 }}
+                                    onMouseEnter={() => setHoveredExpenseIdx(idx)}
+                                    onMouseLeave={() => setHoveredExpenseIdx(null)}
+                                  />
+                                );
+                              })
+                            )}
+                          </svg>
+                          <div style={{ position: 'absolute', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+                            {hoveredExpenseIdx !== null ? (
+                              <>
+                                <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)', fontWeight: 'bold' }}>{categoryItems[hoveredExpenseIdx].label}</span>
+                                <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: CHART_COLORS[hoveredExpenseIdx % CHART_COLORS.length] }}>{categoryItems[hoveredExpenseIdx].pct.toFixed(0)}%</span>
+                              </>
+                            ) : (
+                              <>
+                                <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>Total Beban</span>
+                                <span style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>{formatRupiah(totalExp)}</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Legend */}
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>
+                          {categoryItems.length === 0 ? (
+                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center', fontStyle: 'italic' }}>Belum ada pengeluaran bulan ini.</div>
+                          ) : (
+                            categoryItems.map((cat, idx) => (
+                              <div 
+                                key={cat.key}
+                                onMouseEnter={() => setHoveredExpenseIdx(idx)}
+                                onMouseLeave={() => setHoveredExpenseIdx(null)}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                  padding: '4px 8px',
+                                  borderRadius: '6px',
+                                  cursor: 'pointer',
+                                  backgroundColor: hoveredExpenseIdx === idx ? 'var(--bg-tertiary)' : 'transparent',
+                                  transition: 'background-color 0.2s',
+                                  fontSize: '0.78rem'
+                                }}
+                              >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: CHART_COLORS[idx % CHART_COLORS.length] }}></div>
+                                  <span style={{ fontWeight: hoveredExpenseIdx === idx ? 'bold' : 'normal', color: 'var(--text-primary)' }}>{cat.label}</span>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--text-secondary)' }}>
+                                  <span>{formatRupiah(cat.value)}</span>
+                                  <span style={{ fontSize: '0.7rem', fontWeight: 'bold', color: 'var(--text-muted)', width: '32px', textAlign: 'right' }}>{cat.pct.toFixed(0)}%</span>
+                                </div>
+                              </div>
+                            ))
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                </div>
-              )}
+                    {/* 4. Unduh Laporan Button */}
+                    <button 
+                      onClick={handleDownloadReport} 
+                      className="btn-primary" 
+                      style={{ 
+                        width: '100%', 
+                        padding: '12px', 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center', 
+                        gap: '8px', 
+                        fontSize: '0.9rem', 
+                        fontWeight: 'bold',
+                        boxShadow: 'var(--shadow-md)'
+                      }}
+                    >
+                      📥 Unduh Laporan Keuangan & Evaluasi AI (.txt)
+                    </button>
+                    
+                  </div>
+                );
+              })()}
 
             </div>
           )}
