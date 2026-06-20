@@ -4,33 +4,44 @@
 import { db, secureRandom } from './db';
 
 export const CATEGORY_TO_SYARIAH_MAP = {
-  // Dharuriyat
-  makanan_pokok: { priority: 'Dharuriyat', label: 'Makanan Pokok', group: 'Kebutuhan Pokok' },
-  kos_tempat_tinggal: { priority: 'Dharuriyat', label: 'Kos / Tempat Tinggal', group: 'Kebutuhan Pokok' },
+  makan_utama: { priority: 'Dharuriyat', label: 'Makan Utama', group: 'Kebutuhan Pokok' },
+  camilan_jajan: { priority: 'Tahsiniyat', label: 'Camilan & Jajan', group: 'Gaya Hidup' },
+  bayar_kos: { priority: 'Dharuriyat', label: 'Bayar Kos / Kontrakan', group: 'Kebutuhan Pokok' },
+  kebutuhan_bulanan: { priority: 'Dharuriyat', label: 'Kebutuhan Bulanan', group: 'Kebutuhan Pokok' },
+  paket_data: { priority: 'Hajiyat', label: 'Paket Data & Internet', group: 'Akademik' },
   spp_ukt: { priority: 'Dharuriyat', label: 'SPP / UKT Kuliah', group: 'Akademik' },
-  transportasi_kuliah: { priority: 'Dharuriyat', label: 'Transportasi Kuliah', group: 'Kebutuhan Pokok' },
-
-  // Hajiyat
-  buku_kuliah: { priority: 'Hajiyat', label: 'Buku & Referensi Kuliah', group: 'Akademik' },
-  paket_internet: { priority: 'Hajiyat', label: 'Paket Internet Belajar', group: 'Akademik' },
-  alat_tulis: { priority: 'Hajiyat', label: 'Alat Tulis & Kuliah', group: 'Akademik' },
-  sedekah: { priority: 'Hajiyat', label: 'Sedekah & Zakat', group: 'Saving & Sedekah' },
-
-  // Tahsiniyat
-  kopi_cafe: { priority: 'Tahsiniyat', label: 'Kopi & Nongkrong Kafe', group: 'Gaya Hidup' },
-  hiburan: { priority: 'Tahsiniyat', label: 'Hiburan & Game', group: 'Gaya Hidup' },
-  fashion: { priority: 'Tahsiniyat', label: 'Pakaian & Mode', group: 'Gaya Hidup' },
-  streaming: { priority: 'Tahsiniyat', label: 'Langganan Streaming', group: 'Gaya Hidup' },
-  hangout: { priority: 'Tahsiniyat', label: 'Hangout & Restoran', group: 'Gaya Hidup' },
+  transportasi_bensin: { priority: 'Dharuriyat', label: 'Transportasi & Bensin', group: 'Kebutuhan Pokok' },
+  tagihan_langganan: { priority: 'Hajiyat', label: 'Tagihan & Langganan', group: 'Gaya Hidup' },
+  edukasi_alat_tulis: { priority: 'Hajiyat', label: 'Edukasi & Alat Tulis', group: 'Akademik' },
+  belanja_online: { priority: 'Tahsiniyat', label: 'Belanja Online / E-Commerce', group: 'Gaya Hidup' },
+  nongkrong_hiburan: { priority: 'Tahsiniyat', label: 'Nongkrong & Hiburan', group: 'Gaya Hidup' },
+  sedekah_zakat: { priority: 'Hajiyat', label: 'Sedekah & Zakat', group: 'Saving & Sedekah' },
   lainnya: { priority: 'Tahsiniyat', label: 'Lain-lain', group: 'Gaya Hidup' }
+};
+
+// Legacy Category Translation Map (Backward Compatibility)
+const LEGACY_CATEGORY_MAP = {
+  makanan_pokok: 'makan_utama',
+  kos_tempat_tinggal: 'bayar_kos',
+  transportasi_kuliah: 'transportasi_bensin',
+  buku_kuliah: 'edukasi_alat_tulis',
+  paket_internet: 'paket_data',
+  alat_tulis: 'edukasi_alat_tulis',
+  sedekah: 'sedekah_zakat',
+  kopi_cafe: 'nongkrong_hiburan',
+  hiburan: 'nongkrong_hiburan',
+  fashion: 'belanja_online',
+  streaming: 'tagihan_langganan',
+  hangout: 'nongkrong_hiburan'
 };
 
 // Auto Classify Transaction
 export const classifyTransaction = (category) => {
-  const mapping = CATEGORY_TO_SYARIAH_MAP[category];
+  const normCategory = LEGACY_CATEGORY_MAP[category] || category;
+  const mapping = CATEGORY_TO_SYARIAH_MAP[normCategory];
   if (mapping) {
     return {
-      category,
+      category: normCategory,
       priority_tag: mapping.priority,
       pos_utama: mapping.group,
       label: mapping.label
@@ -69,9 +80,9 @@ export const calculateFinancials = (userId, transactions, budgetPlan) => {
   const totalExpense = expenses.reduce((sum, t) => sum + t.amount, 0);
 
   const dharuriyatSpend = expenses.filter(t => t.priority_tag === 'Dharuriyat').reduce((sum, t) => sum + t.amount, 0);
-  const hajiyatSpend = expenses.filter(t => t.priority_tag === 'Hajiyat' && t.category !== 'sedekah').reduce((sum, t) => sum + t.amount, 0);
+  const hajiyatSpend = expenses.filter(t => t.priority_tag === 'Hajiyat' && t.category !== 'sedekah' && t.category !== 'sedekah_zakat').reduce((sum, t) => sum + t.amount, 0);
   const tahsiniyatSpend = expenses.filter(t => t.priority_tag === 'Tahsiniyat').reduce((sum, t) => sum + t.amount, 0);
-  const sedekahSpend = expenses.filter(t => t.category === 'sedekah').reduce((sum, t) => sum + t.amount, 0);
+  const sedekahSpend = expenses.filter(t => t.category === 'sedekah' || t.category === 'sedekah_zakat').reduce((sum, t) => sum + t.amount, 0);
 
   // Balance (all time)
   const allTimeTransactions = transactions;
@@ -379,7 +390,7 @@ export const generateRecommendations = (userId) => {
         spendsByCategory[t.category] = (spendsByCategory[t.category] || 0) + t.amount;
       });
 
-      let topCategory = 'kopi_cafe';
+      let topCategory = 'nongkrong_hiburan';
       let maxAmount = 0;
       Object.keys(spendsByCategory).forEach(cat => {
         if (spendsByCategory[cat] > maxAmount) {

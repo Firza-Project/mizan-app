@@ -96,7 +96,7 @@ export default function MobileEmulator({ onActionLogged }) {
   // Input Forms
   const [txForm, setTxForm] = useState({
     amount: '',
-    category: 'makanan_pokok',
+    category: 'makan_utama',
     transaction_type: 'Keluar',
     description: '',
     date: new Date().toISOString().split('T')[0]
@@ -357,7 +357,7 @@ export default function MobileEmulator({ onActionLogged }) {
     // Reset Form
     setTxForm({
       amount: '',
-      category: 'makanan_pokok',
+      category: 'makan_utama',
       transaction_type: 'Keluar',
       description: '',
       date: new Date().toISOString().split('T')[0]
@@ -387,7 +387,7 @@ export default function MobileEmulator({ onActionLogged }) {
     setEditingTxId(null);
     setTxForm({
       amount: '',
-      category: 'makanan_pokok',
+      category: 'makan_utama',
       transaction_type: 'Keluar',
       description: '',
       date: new Date().toISOString().split('T')[0]
@@ -443,7 +443,7 @@ export default function MobileEmulator({ onActionLogged }) {
     if (newPaid) {
       db.transactions.add(currentUser.user_id, {
         amount: ob.amount,
-        category: 'kos_tempat_tinggal',
+        category: 'bayar_kos',
         transaction_type: 'Keluar',
         priority_tag: 'Dharuriyat',
         description: `Pembayaran: ${ob.title}`,
@@ -589,7 +589,7 @@ export default function MobileEmulator({ onActionLogged }) {
 
     db.transactions.add(currentUser.user_id, {
       amount,
-      category: 'sedekah',
+      category: 'sedekah_zakat',
       transaction_type: 'Keluar',
       priority_tag: 'Hajiyat',
       description: `Tabungan Impian: ${title}`,
