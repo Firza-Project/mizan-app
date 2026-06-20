@@ -30,16 +30,7 @@ export default function App() {
   return (
     <div className="app-portal-wrapper" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', width: '100%' }}>
       {/* Top Header Bar */}
-      <header style={{
-        background: 'var(--bg-secondary)',
-        borderBottom: '1px solid var(--border-color)',
-        padding: '0.8rem 2rem',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        boxShadow: 'var(--shadow-sm)',
-        zIndex: 10
-      }}>
+      <header className="app-portal-header">
         <div className="portal-brand" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.2rem', fontWeight: 'bold' }}>
           🌙 Mizan App
         </div>

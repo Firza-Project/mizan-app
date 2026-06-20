@@ -119,6 +119,23 @@ button, input, select, textarea {
 
 
 
+.app-portal-header {
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  padding: 0.8rem 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: var(--shadow-sm);
+  z-index: 10;
+}
+
+@media (max-width: 768px) {
+  .app-portal-header {
+    padding: 0.8rem 0.75rem;
+  }
+}
+
 /* Portal Header */
 .portal-header {
   position: absolute;

@@ -1855,7 +1855,7 @@ export default function MobileEmulator({ onActionLogged }) {
               </div>
 
               {/* Countdown Reminder settings */}
-              <div className="mizan-card" style={{ padding: '1.2rem', gap: '0.6rem', alignSelf: 'start' }}>
+              <div className="mizan-card" style={{ padding: '1.2rem', gap: '0.6rem', alignSelf: isMobile ? 'stretch' : 'start' }}>
                 <div className="mizan-card-title" style={{ fontSize: '0.9rem', fontWeight: 'bold' }}>Pengaturan Pengingat Adzan</div>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.8rem' }}>
                   <span>Peringatan sebelum shalat:</span>
@@ -1991,7 +1991,7 @@ export default function MobileEmulator({ onActionLogged }) {
               </div>
 
               {/* Sleep log configurations */}
-              <div className="mizan-card" style={{ padding: '1.5rem', gap: '0.8rem', alignSelf: 'start' }}>
+              <div className="mizan-card" style={{ padding: '1.5rem', gap: '0.8rem', alignSelf: isMobile ? 'stretch' : 'start' }}>
                 <div className="mizan-card-title" style={{ fontSize: '1.1rem', fontWeight: 'bold' }}>Kecukupan Tidur (Anti-Begadang)</div>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.85rem', margin: '0.5rem 0' }}>
                   <span>Durasi tidur semalam:</span>
