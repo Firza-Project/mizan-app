@@ -1030,9 +1030,12 @@ export default function MobileEmulator({ onActionLogged }) {
     return (
       <div className="auth-portal-fullscreen fade-in">
         <div className="auth-container-desktop">
-          <div className="auth-logo-desktop">
-            🌙 Mizan App
-            <span>KESEIMBANGAN HIDUP & SYARIAH</span>
+          <div className="auth-logo-desktop" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.6rem', marginBottom: '1rem' }}>
+            <img src="/logo.png" alt="Mizan Logo" style={{ width: '64px', height: '64px', borderRadius: '12px', boxShadow: 'var(--shadow-md)' }} />
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <span style={{ fontSize: '2.2rem', fontWeight: 'bold', fontFamily: 'var(--font-serif)', color: 'var(--primary)' }}>Mizan App</span>
+              <span style={{ fontSize: '0.8rem', fontFamily: 'var(--font-primary)', color: 'var(--text-secondary)', fontWeight: '600', letterSpacing: '1px', marginTop: '2px' }}>KESEIMBANGAN HIDUP & SYARIAH</span>
+            </div>
           </div>
 
           <div className="auth-card-desktop">
@@ -1176,8 +1179,9 @@ export default function MobileEmulator({ onActionLogged }) {
       {/* Sidebar Navigation (Hidden on Mobile) */}
       {!isMobile && (
         <aside className="sidebar-nav">
-          <div className="sidebar-brand">
-            🌙 Mizan App
+          <div className="sidebar-brand" style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+            <img src="/logo.png" alt="Mizan Logo" style={{ width: '28px', height: '28px', borderRadius: '6px' }} />
+            <span>Mizan App</span>
           </div>
 
           <div className="sidebar-user">

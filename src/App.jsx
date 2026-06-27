@@ -31,8 +31,9 @@ export default function App() {
     <div className="app-portal-wrapper" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', width: '100%' }}>
       {/* Top Header Bar */}
       <header className="app-portal-header">
-        <div className="portal-brand" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.2rem', fontWeight: 'bold' }}>
-          🌙 Mizan App
+        <div className="portal-brand" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.25rem', fontWeight: 'bold', fontFamily: 'var(--font-serif)' }}>
+          <img src="/logo.png" alt="Mizan Logo" style={{ width: '28px', height: '28px', borderRadius: '6px' }} />
+          Mizan App
         </div>
         <button onClick={toggleTheme} className="theme-toggle-btn">
           {theme === 'light' ? '☀️ Light' : '🌙 Dark'}
